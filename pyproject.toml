@@ -1,0 +1,203 @@
+# Poetry pyproject.toml: https://python-poetry.org/docs/pyproject/
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "nearness"
+version = "0.1.0"
+description = "An easy-to-use interface for (approximate) nearest neighbors algorithms."
+readme = "README.md"
+authors = ["David Muhr <muhrdavid+github@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/davnn/nearness"
+packages = [{ include = "nearness", from = "src" }]
+
+# Pypi classifiers: https://pypi.org/classifiers/
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Utilities",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+    "Operating System :: MacOS",
+    "Typing :: Typed"
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.13"
+safecheck = "^0.3"
+joblib = "^1"
+typing-extensions = ">=4"
+numpy = { version = ">=1", optional = true }
+scipy = { version = ">=1", optional = true }
+scikit-learn = { version = ">=1", optional = true }
+faiss-cpu = { version = "^1", optional = true }
+annoy = { version = "^1", optional = true }
+hnswlib = { version = "^0.8", optional = true }
+scann = { version = "^1", optional = true, platform = "linux", markers = "python_version < '3.12'" }
+glassppy = { version = "^1", optional = true, platform = "linux", markers = "python_version == '3.10'" }
+jax = { version = ">=0.4", source = "pypi", extras = ["cpu"], optional = true }
+torch = [
+    { version = ">=1", platform = "darwin", source = "pypi", optional = true },
+    { version = ">=1", platform = "win32", source = "pypi", optional = true },
+    { version = ">=1", platform = "linux", source = "torch-cpu", optional = true }
+]
+
+[tool.poetry.extras]
+annoy = ["annoy"]
+numpy = ["numpy"]
+scipy = ["scipy"]
+hnswlib = ["hnswlib"]
+scikit-learn = ["scikit-learn"]
+faiss = ["faiss-cpu"]
+torch = ["torch"]
+scann = ["scann"]
+glass = ["glassppy"]
+jax = ["jax"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.2"
+pytest-html = "^4.0.2"
+hypothesis = "^6.87.3"
+coverage = "^7.3.2"
+pytest-cov = "^4.1.0"
+coverage-badge = "^1.1.0"
+ruff = "^0.0.292"
+pre-commit = "^3.4.0"
+black = "^23.9.1"
+pyright = "^1.1.329"
+bandit = "^1.7.5"
+safety = "^2.3.5"
+notebook = "^7.0.4"
+pytest-benchmark = "^4.0.0"
+
+[[tool.poetry.source]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[tool.black]
+# https://github.com/psf/black
+target-version = ["py310"]
+line-length = 120
+color = true
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+select = ["ALL"]
+ignore = [
+    "D203", # one blank line required before class docstring
+    "D213", # multi line summary should start at second line
+    "D401", # docstrings should start with non-imperative mood
+    "E501", # line too long, handled by black
+    "F403", # disallow * import, otherwise allow at module level (F406)
+    "B008", # do not perform function calls in argument defaults
+    "S101", # do not use assert,
+    "PD901", # do not use 'df' as a variable name
+    "PLR0911", # too many return statements
+    "ANN101", # missing type annotations for 'self'
+    "D107", # missing docstring for '__init__'
+    "TCH", # require type checking block
+    "PLR0913", # too many function arguments
+    "F722", # syntax error forward annotations (error on jaxtyping annotation))
+    "UP037", # remove quotes from type annotation (format breaks jaxtyping annotations)
+    "F821", # undefined name (error on jaxtyping annotations)
+    "UP035", # deprecated import (we actually want to import from typing_extensions)
+    "ARG002", # unused method argument (we use the arguments in a meta-class, but ruff doesn't know)
+    "PLR2004", # magic values are sometimes useful
+    "PYI041", # use float instead of int | float, this clashes with typechecking
+    "E731", # no lambdas
+    "B905", # zip without strict arguments
+    "ANN401", # no typed Any
+]
+
+[tool.ruff.lint.isort]
+# Combine multiple `from foo import bar as baz` statements with the same source
+# (`foo`) into a single statement.
+combine-as-imports = true
+# Imports of the form `from foo import bar as baz` show one `import bar as baz`
+# per line. Useful for __init__.py files that just re-export symbols.
+force-wrap-aliases = true
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"beartype".msg = "Do not import from beartype, import from safecheck instead."
+"jaxtyping".msg = "Do not import from jaxtype, import from safecheck instead."
+"typing".msg = "Do not import from typing, import from typing_extensions instead."
+
+[tool.pyright]
+include = ["src/nearness"]
+reportPrivateImportUsage = false
+reportConstantRedefinition = true
+reportDuplicateImport = true
+reportFunctionMemberAccess = true
+reportOptionalMemberAccess = false
+reportImportCycles = true
+reportIncompatibleMethodOverride = true
+reportIncompatibleVariableOverride = true
+reportIncompleteStub = "warning"
+reportInconsistentConstructor = true
+reportInvalidStubStatement = "warning"
+reportMatchNotExhaustive = true
+reportMissingParameterType = true
+reportMissingTypeArgument = false
+reportOverlappingOverload = false
+reportPrivateUsage = false
+reportTypeCommentUsage = "warning"
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportUnknownMemberType = false
+reportUnknownParameterType = false
+reportUnknownVariableType = false
+reportUnnecessaryCast = true
+reportUnnecessaryComparison = true
+reportUnnecessaryContains = true
+reportUnnecessaryIsInstance = true
+reportUnnecessaryTypeIgnoreComment = true
+reportUnusedClass = true
+reportUnusedImport = true
+reportUnusedFunction = true
+reportUnusedVariable = true
+reportUnusedExpression = true
+reportUnusedCallResult = false
+reportUntypedBaseClass = false
+reportUntypedClassDecorator = false
+reportUntypedFunctionDecorator = false
+reportUntypedNamedTuple = false
+reportCallInDefaultInitializer = false
+reportImplicitStringConcatenation = true
+reportMissingSuperCall = true
+reportPropertyTypeMismatch = true
+reportUninitializedInstanceVariable = true
+reportMissingImports = false
+
+[tool.pytest.ini_options]
+# https://docs.pytest.org/en/6.2.x/customize.html#pyproject-toml
+# Directories that are not visited by pytest collector:
+norecursedirs = ["hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
+addopts = ["--strict-markers", "--tb=short"]
+filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["tests"]
+branch = true
+
+[tool.coverage.paths]
+source = ["src/nearness"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = ["pragma: no cover", "@overload", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]

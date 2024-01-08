@@ -1,0 +1,9 @@
+# Configuration: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository
+blank_issues_enabled: false
+contact_links:
+  - name: ⁉ Questions and Discussions
+    url: https://github.com/davnn/nearness/discussions
+    about: Please do not use issues for question and discussion.
+  - name: 😍 Contribution Guide
+    url: https://github.com/davnn/nearness/blob/main/.github/CONTRIBUTING.md
+    about: Please read through before making a contribution.

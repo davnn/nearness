@@ -1,0 +1,57 @@
+name: Setup
+
+on:
+    workflow_call:
+        inputs:
+            python:
+                required: true
+                type: string
+            os:
+                required: true
+                type: string
+            command:
+                required: true
+                type: string
+
+env:
+    POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+
+jobs:
+    setup:
+        runs-on: ${{ inputs.os }}
+        steps:
+            -   uses: actions/checkout@v4
+
+            -   name: Install Task
+                uses: arduino/setup-task@v1
+                with:
+                    version: 3.x
+                    repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+            -   name: Install poetry
+                run: curl -sSL https://install.python-poetry.org | python3 -
+
+            -   name: Set up poetry path (windows)
+                if: inputs.os == 'windows-latest'
+                run: echo "C:\Users\runneradmin\AppData\Roaming\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+            -   name: Set up poetry path (macos)
+                if: inputs.os == 'macos-latest'
+                run: echo "/Users/runner/.local/bin" >> $GITHUB_PATH
+
+            -   name: Set up poetry path (linux)
+                if: inputs.os == 'ubuntu-latest'
+                run: echo "/home/runner/.local/bin" >> $GITHUB_PATH
+
+            -   name: Set up Python ${{ inputs.python }}
+                uses: actions/setup-python@v5
+                with:
+                    python-version: ${{ inputs.python }}
+                    cache: "poetry"
+
+            -   name: Run install
+                run: task poetry-install
+
+            -   name: Command
+                run: ${{ inputs.command }}
+                shell: bash
