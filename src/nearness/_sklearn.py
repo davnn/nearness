@@ -14,7 +14,6 @@ class SklearnNeighbors(NearestNeighbors):
     def __init__(
         self,
         *,
-        n_neighbors: int = 5,
         algorithm: available_algorithms = "auto",
         leaf_size: int = 30,
         metric: str = "minkowski",  # dynamically checked
@@ -29,7 +28,6 @@ class SklearnNeighbors(NearestNeighbors):
     @typecheck
     def fit(self, data: Real[NumpyArray, "n d"]) -> "SklearnNeighbors":
         self._model = SklearnNearestNeighbors(
-            n_neighbors=self.parameters.n_neighbors,
             algorithm=self.parameters.algorithm,
             leaf_size=self.parameters.leaf_size,
             metric=self.parameters.metric,

@@ -26,8 +26,7 @@ __all__ = [
 ]
 
 
-class InvalidSignatureError(ValueError):
-    ...
+class InvalidSignatureError(ValueError): ...
 
 
 class NearestNeighborsMeta(ABCMeta):
@@ -367,7 +366,7 @@ def _create_parameter_class(
 ) -> "types.Parameters":  # type: ignore[reportGeneralTypeIssues]
     empty = inspect.Parameter.empty
     parameter_types = [(k, Any if (a := v.annotation) is empty else a) for k, v in parameters.items()]
-    parameter_values = {k: kwargs[k] if k in kwargs else v.default for k, v in parameters.items()}
+    parameter_values = {k: kwargs.get(k, v.default) for k, v in parameters.items()}
     return make_dataclass("Parameters", parameter_types)(**parameter_values)  # type: ignore[reportArgumentType]
 
 

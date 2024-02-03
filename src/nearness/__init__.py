@@ -13,6 +13,7 @@ package that would otherwise be included as an extra dependency, you can use the
 algorithm. For example, if you have installed ``nearness`` and ``numpy``, the algorithm
 ``NumpyNeighbors`` is exposed.
 """
+
 from ._base import ExperimentalWarning, NearestNeighbors, config
 
 __all__ = [

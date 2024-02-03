@@ -13,7 +13,7 @@
 
 *nearness* is a unified interface for (approximate) nearest neighbors search.
 
-Using ``pip install nearness``, nearness only installs the interface and does not add any concrete nearest
+Using ``pip install nearness`` only installs the interface and does not add any concrete nearest
 neighbors search implementation. The following implementations are available currently:
 
 - [Annoy](https://github.com/spotify/annoy) exposes ``AnnoyNeighbors``
@@ -28,8 +28,8 @@ neighbors search implementation. The following implementations are available cur
 - [scikit-learn](https://github.com/scikit-learn/scikit-learn) exposes ``SklearnNeighbors``
 - [PyTorch](https://github.com/pytorch/pytorch) exposes ``TorchNeighbors``
 
-If you install one of the above packages, nearness exposes the corresponding nearest neighbors implementation,
-for example ``FaissNeighbors`` if [Faiss](https://github.com/facebookresearch/faiss) is installed.
+Installing one of the above packages exposes the corresponding nearest neighbors implementation. For example,
+``nearness.FaissNeighbors`` is available if [Faiss](https://github.com/facebookresearch/faiss) is installed.
 
 Another option to install the underlying packages is to specify them as package extras, e.g.
 ``pip install nearness[faiss]`` installs the nearness with ``faiss-cpu``. If you require flexibility regarding
@@ -40,13 +40,11 @@ the specific version of the installed packages, it's recommended to install them
 The nearness API consists of a single class called ``NearestNeighbors`` with the following methods.
 
 ```python
-@abstractmethod
 def fit(data: np.ndarray) -> Self:
     """Learn an index structure based on a matrix of points."""
     ...
 
 
-@abstractmethod
 def query(point: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]:
     """Search ``n_neighbors`` for a single point, returning the indices and distances."""
     ...
@@ -58,11 +56,10 @@ def query_batch(points: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.nd
 
 
 def save(file: str | Path) -> None:
-    """Save the state of the model using pickle such that it can be fully restored using ``load``."""
+    """Save the state of the model using pickle such that it can be fully restored."""
     ...
 
 
-@staticmethod
 def load(file: str | Path) -> None:
     """Load a model using pickle to fully restore the saved state."""
     ...
@@ -76,9 +73,46 @@ The library additionally exports a global ``config`` object, of which the curren
 ``NearestNeighbors`` class instantiation. Any modifications of a class-bound config is then specific to the class
 and does not modify the global object.
 
-In addition to the global configuration, we treat all of the ``__init__`` arguments to ``NearestNeighbors``
+In addition to the global config, we treat all of the ``__init__`` arguments to ``NearestNeighbors``
 as ``parameters`` of the class, automagically binding the parameters to an object before instantiation. We expose the
 config and parameters of an object as ``obj.config`` and ``obj.parameters``.
+
+### Usage Example
+
+The following example demonstrates how to use nearness given that
+[scikit-learn](https://github.com/scikit-learn/scikit-learn) is installed.
+
+```python
+from nearness import SklearnNeighbors
+from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
+
+X, _ = load_digits(return_X_y=True)
+X_train, X_test = train_test_split(X)
+
+# create a brute force nearest neighbors model
+model = SklearnNeighbors(algorithm="brute")
+model.fit(X_train)
+
+# query a single test point
+idx, dist = model.query(X_test[0], n_neighbors=5)
+
+# query all test points
+idx_batch, dist_batch = model.query_batch(X_test, n_neighbors=5)
+
+# change the algorithm to a K-D tree and fit again
+model.parameters.algorithm = "kd_tree"
+model.fit(X_train)
+
+# save the model to a file
+model.save("my_sklearn_model")
+
+# load the model from file
+kdtree_model = SklearnNeighbors.load("my_sklearn_model")
+
+# query again using the loaded model
+kdtree_model.query(X_test[0], n_neighbors=5)
+```
 
 ### Algorithm Implementation
 
@@ -116,6 +150,6 @@ class MyNearestNeighbors(NearestNeighbors):
 An interesting configuration aspect is ``methods_require_fit``, which specifies the set of methods that require a
 successful call of ``fit`` before they can be used. By default, the query methods are listed in
 ``methods_require_fit``, and, if a query method is called before ``fit``, an informative error message is shown.
-A successful fit additionally sets the property ``is_fitted`` to ``True`` and removes the fit checks such that
-there is zero overhead once the algorithm is fit. Manually setting ``is_fitted`` to ``False`` again adds the
+A successful fit additionally sets the ``is_fitted`` property to ``True`` and removes the fit checks such that
+there is zero overhead for queries. Manually setting ``is_fitted`` to ``False`` again adds the
 checks to all methods specified in ``methods_require_fit``.

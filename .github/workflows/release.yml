@@ -11,7 +11,7 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ ubuntu-latest ]
-                python: [ "3.12" ]
+                python: [ "3.10" ]
         uses: ./.github/workflows/setup.yml
         secrets: inherit
         with:

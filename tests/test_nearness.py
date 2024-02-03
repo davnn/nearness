@@ -1,10 +1,8 @@
-import platform
 from uuid import uuid4
 import threading
 from dataclasses import dataclass
 
 import faiss
-import pytest
 from faiss.contrib.datasets import SyntheticDataset
 from typing_extensions import Self, Literal
 
@@ -69,6 +67,9 @@ candidates = {
     "scipy": lambda: Candidate(
         implementation=ScipyNeighbors(metric="euclidean"), reference=SklearnNeighbors(metric="euclidean")
     ),
+    "autofaiss": lambda: Candidate(
+        implementation=AutoFaissNeighbors(metric_type="l2"), reference=SklearnNeighbors(metric="sqeuclidean")
+    ),
     "faiss": lambda: Candidate(
         implementation=FaissNeighbors(index_or_factory="Flat"), reference=SklearnNeighbors(metric="sqeuclidean")
     ),
@@ -80,8 +81,6 @@ candidates = {
         implementation=JaxNeighbors(compute_mode="donot_use_mm_for_euclid_dist"),
         reference=SklearnNeighbors(metric="euclidean"),
     ),
-    # algorithms that are not checked against a reference algorithm (yet)
-    "autofaiss": lambda: Candidate(implementation=AutoFaissNeighbors(metric_type="l2")),
 }
 
 candidates = [pytest_param_if_value_available(k, v) for k, v in candidates.items()]
@@ -260,9 +259,6 @@ def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
     if key == "hnsw-brute":
         pytest.skip("Saving of HSNW index with use_bruteforce=True is not possible currently.")
 
-    if key == "annoy" and platform.system() == "Windows":
-        pytest.skip("Multiprocessing currently ruins saving on Windows.")
-
     data, n_neighbors = data_and_neighbors
     saved_model = candidate.implementation.fit(data.fit)
     saved_model.save(save_path)
@@ -334,11 +330,9 @@ def test_thread_safety():
         def __init__(self, *, thread_id: int):
             super().__init__()
 
-        def fit(self, data: np.ndarray) -> Self:
-            ...
+        def fit(self, data: np.ndarray) -> Self: ...
 
-        def query(self, point: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]:
-            ...
+        def query(self, point: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]: ...
 
     # Use a threading.Event to synchronize threads
     start_event = threading.Event()
@@ -377,8 +371,7 @@ def test_thread_safety():
 
 
 def test_missing_abstract_method():
-    class N(NearestNeighbors):
-        ...
+    class N(NearestNeighbors): ...
 
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
         N()
@@ -388,22 +381,18 @@ def test_keyword_only():
     with pytest.raises(InvalidSignatureError):
 
         class N(NearestNeighbors):
-            def __init__(self, a):
-                ...
+            def __init__(self, a): ...
 
 
 def test_warn_check():
     class ModelNoConfig(NearestNeighbors):
         no_method = True
 
-        def __init__(self):
-            ...
+        def __init__(self): ...
 
-        def fit(self, data):
-            ...
+        def fit(self, data): ...
 
-        def query(self, point, n_neighbors):
-            ...
+        def query(self, point, n_neighbors): ...
 
     class ModelWrongAttribute(NearestNeighbors):
         no_method = True
@@ -411,21 +400,17 @@ def test_warn_check():
         def __init__(self):
             self.config.methods_require_fit = self.config.methods_require_fit | {"no_method"}
 
-        def fit(self, data):
-            ...
+        def fit(self, data): ...
 
-        def query(self, point, n_neighbors):
-            ...
+        def query(self, point, n_neighbors): ...
 
     class ModelMissingAttribute(NearestNeighbors):
         def __init__(self):
             self.config.methods_require_fit = self.config.methods_require_fit | {"missing_method"}
 
-        def fit(self, data):
-            ...
+        def fit(self, data): ...
 
-        def query(self, point, n_neighbors):
-            ...
+        def query(self, point, n_neighbors): ...
 
     with pytest.warns(UserWarning, match="Attempting to enable '__fitted__' check for invalid attribute"):
         ModelWrongAttribute()
@@ -444,14 +429,12 @@ def test_warn_check():
 
 def test_check_attribute():
     class Model(NearestNeighbors):
-        def __init__(self):
-            ...
+        def __init__(self): ...
 
         def fit(self, data):
             return self
 
-        def query(self, point, n_neighbors):
-            ...
+        def query(self, point, n_neighbors): ...
 
     model = Model()
 

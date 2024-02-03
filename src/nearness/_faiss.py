@@ -8,8 +8,7 @@ from ._base import NearestNeighbors
 
 @runtime_checkable
 class FaissIndexFactory(Protocol):
-    def __call__(self, dim: int) -> faiss.Index:
-        ...
+    def __call__(self, dim: int) -> faiss.Index: ...
 
 
 class FaissNeighbors(NearestNeighbors):
@@ -34,6 +33,7 @@ class FaissNeighbors(NearestNeighbors):
     ----------
         - https://github.com/facebookresearch/faiss
         - https://www.pinecone.io/learn/series/faiss/
+
     """
 
     @typecheck

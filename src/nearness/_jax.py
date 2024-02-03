@@ -73,16 +73,14 @@ class JaxNeighbors(NearestNeighbors):
         self,
         point: Float[JaxArray, "d"],
         n_neighbors: int,
-    ) -> tuple[Int32[JaxArray, "{n_neighbors}"], Float32[JaxArray, "{n_neighbors}"]]:
-        ...
+    ) -> tuple[Int32[JaxArray, "{n_neighbors}"], Float32[JaxArray, "{n_neighbors}"]]: ...
 
     @overload
     def query(
         self,
         point: Float[NumpyArray, "d"],
         n_neighbors: int,
-    ) -> tuple[Int32[NumpyArray, "{n_neighbors}"], Float32[NumpyArray, "{n_neighbors}"]]:
-        ...
+    ) -> tuple[Int32[NumpyArray, "{n_neighbors}"], Float32[NumpyArray, "{n_neighbors}"]]: ...
 
     def query(self, point, n_neighbors):  # type: ignore[reportGeneralTypeIssues]
         """CPU-based nearest neighbors algorithm based on scikit-learn. Note: The distances and indices are sorted!."""
@@ -94,16 +92,14 @@ class JaxNeighbors(NearestNeighbors):
         self,
         points: Float[JaxArray, "m d"],
         n_neighbors: int,
-    ) -> tuple[Int32[JaxArray, "m {n_neighbors}"], Float32[JaxArray, "m {n_neighbors}"]]:
-        ...
+    ) -> tuple[Int32[JaxArray, "m {n_neighbors}"], Float32[JaxArray, "m {n_neighbors}"]]: ...
 
     @overload
     def query_batch(
         self,
         points: Float[NumpyArray, "m d"],
         n_neighbors: int,
-    ) -> tuple[Int32[NumpyArray, "m {n_neighbors}"], Float32[NumpyArray, "m {n_neighbors}"]]:
-        ...
+    ) -> tuple[Int32[NumpyArray, "m {n_neighbors}"], Float32[NumpyArray, "m {n_neighbors}"]]: ...
 
     def query_batch(self, points, n_neighbors):  # type: ignore[reportGeneralTypeIssues]
         # the data is implicitly casted to a jax array

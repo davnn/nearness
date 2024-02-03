@@ -45,16 +45,14 @@ class TorchNeighbors(NearestNeighbors):
         self,
         point: SupportedFloat[NumpyArray, "d"],
         n_neighbors: int,
-    ) -> tuple[Int64[NumpyArray, "{n_neighbors}"], SupportedFloat[NumpyArray, "{n_neighbors}"]]:
-        ...
+    ) -> tuple[Int64[NumpyArray, "{n_neighbors}"], SupportedFloat[NumpyArray, "{n_neighbors}"]]: ...
 
     @overload
     def query(
         self,
         point: SupportedFloat[TorchArray, "d"],
         n_neighbors: int,
-    ) -> tuple[Int64[TorchArray, "{n_neighbors}"], SupportedFloat[TorchArray, "{n_neighbors}"]]:
-        ...
+    ) -> tuple[Int64[TorchArray, "{n_neighbors}"], SupportedFloat[TorchArray, "{n_neighbors}"]]: ...
 
     def query(self, point, n_neighbors):
         idx, dist = self.query_batch(point.reshape(1, -1), n_neighbors)
@@ -65,16 +63,14 @@ class TorchNeighbors(NearestNeighbors):
         self,
         points: SupportedFloat[NumpyArray, "m d"],
         n_neighbors: int,
-    ) -> tuple[Int64[NumpyArray, "m {n_neighbors}"], SupportedFloat[NumpyArray, "m {n_neighbors}"]]:
-        ...
+    ) -> tuple[Int64[NumpyArray, "m {n_neighbors}"], SupportedFloat[NumpyArray, "m {n_neighbors}"]]: ...
 
     @overload
     def query_batch(
         self,
         points: SupportedFloat[TorchArray, "m d"],
         n_neighbors: int,
-    ) -> tuple[Int64[TorchArray, "m {n_neighbors}"], SupportedFloat[TorchArray, "m {n_neighbors}"]]:
-        ...
+    ) -> tuple[Int64[TorchArray, "m {n_neighbors}"], SupportedFloat[TorchArray, "m {n_neighbors}"]]: ...
 
     def query_batch(self, points, n_neighbors):
         is_numpy = isinstance(points, NumpyArray)

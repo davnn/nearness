@@ -13,7 +13,6 @@ data = SyntheticDataset(
 
 candidates = {
     "annoy": lambda: AnnoyNeighbors(metric="euclidean", n_search_neighbors=256),
-    "autofaiss": lambda: AutoFaissNeighbors(),
     "faiss-ivf-pq": lambda: FaissNeighbors(index_or_factory="OPQ8,IVF128,PQ8", sample_train_points=10_000),
     "faiss-hnsw-pq": lambda: FaissNeighbors(index_or_factory="OPQ8,HNSW_PQ8"),
     "faiss-nsg-pq": lambda: FaissNeighbors(index_or_factory="OPQ8,NSG_PQ8"),
