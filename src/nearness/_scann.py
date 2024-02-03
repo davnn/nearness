@@ -1,9 +1,11 @@
+import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 import scann
 from safecheck import Float, Float32, NumpyArray, UInt32, typecheck
-from typing_extensions import Literal, NotRequired, TypedDict, get_type_hints
+from scann.scann_ops.py import scann_ops_pybind_backcompat
+from typing_extensions import Any, Literal, NotRequired, TypedDict, get_type_hints
 
 from ._base import NearestNeighbors
 
@@ -59,7 +61,14 @@ def typedict(data_class: type) -> type[TypedDict]:  # type: ignore[reportGeneral
     field_types: dict[str, type] = {
         k: NotRequired[t] for k, t in get_type_hints(data_class).items()  # type: ignore[reportGeneralTypeIssues]
     }
-    return TypedDict(f"{data_class.__name__}TypedDict", field_types)  # type: ignore[reportGeneralTypeIssues]
+    return TypedDict(f"{data_class.__name__}Dict", field_types)  # type: ignore[reportGeneralTypeIssues]
+
+
+ScannTreeConfigDict = typedict(ScannTreeConfig)
+ScannBruteForceConfigDict = typedict(ScannBruteForceConfig)
+ScannHashingConfigDict = typedict(ScannHashingConfig)
+ScannReorderConfigDict = typedict(ScannReorderConfig)
+ScannSearchConfigDict = typedict(ScannSearchConfig)
 
 
 class ScannNeighbors(NearestNeighbors):
@@ -89,11 +98,11 @@ class ScannNeighbors(NearestNeighbors):
         use_reorder: bool = False,
         use_bruteforce: bool = False,
         search_parallel: bool = False,
-        tree_config: ScannTreeConfig | typedict(ScannTreeConfig) | None = None,  # type: ignore[reportGeneralTypeIssues]
-        bruteforce_config: ScannBruteForceConfig | typedict(ScannBruteForceConfig) | None = None,  # type: ignore[reportGeneralTypeIssues]
-        hashing_config: ScannHashingConfig | typedict(ScannHashingConfig) | None = None,  # type: ignore[reportGeneralTypeIssues]
-        reorder_config: ScannReorderConfig | typedict(ScannReorderConfig) | None = None,  # type: ignore[reportGeneralTypeIssues]
-        search_config: ScannSearchConfig | typedict(ScannSearchConfig) | None = None,  # type: ignore[reportGeneralTypeIssues]
+        tree_config: ScannTreeConfig | ScannTreeConfigDict | None = None,  # type: ignore[reportGeneralTypeIssues]
+        bruteforce_config: ScannBruteForceConfig | ScannBruteForceConfigDict | None = None,  # type: ignore[reportGeneralTypeIssues]
+        hashing_config: ScannHashingConfig | ScannHashingConfigDict | None = None,  # type: ignore[reportGeneralTypeIssues]
+        reorder_config: ScannReorderConfig | ScannReorderConfigDict | None = None,  # type: ignore[reportGeneralTypeIssues]
+        search_config: ScannSearchConfig | ScannSearchConfigDict | None = None,  # type: ignore[reportGeneralTypeIssues]
     ) -> None:
         super().__init__()
         # safely initialize the mutable config parameters
@@ -162,19 +171,30 @@ class ScannNeighbors(NearestNeighbors):
         )
         return idx, dist
 
-    def save(self, file: str | Path) -> None:
-        self._assert_is_directory(file)
-        self._index.serialize(str(file))
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        """Save the bytes to files and read the index from the temporary files."""
+        super().__setstate__(state)
+        if self._index is not None:
+            index_data = state.pop("_index")
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_path = Path(tmp_dir)
+                for name, data in index_data.items():
+                    (tmp_path / name).write_bytes(data)
 
-    def load(self, file: str | Path) -> "ScannNeighbors":
-        self._assert_is_directory(file)
-        searcher = scann.scann_ops_pybind.load_searcher(str(file))
-        self._index = searcher
-        self.__fitted__ = True
-        return self
+                # override the scann_assets.pbtxt file in the current directory, otherwise the paths to the
+                # assets include the old temporary directory prefixes
+                scann_ops_pybind_backcompat.populate_and_save_assets_proto(tmp_dir)
+                self._index = scann.scann_ops_pybind.load_searcher(tmp_dir)
 
-    @staticmethod
-    def _assert_is_directory(file: str | Path) -> None:
-        if not Path(file).is_dir():
-            msg = f"ScaNN requires an artifacts directory for storage, but found no directory at '{file}'."
-            raise AssertionError(msg)
+    def __getstate__(self) -> dict[str, Any]:
+        """Save the index to temporary directory and store the resulting bytes in a dictionary to re-build the index."""
+        state = super().__getstate__()
+        if self._index is not None:
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                self._index.serialize(tmp_dir)
+                tmp_path = Path(tmp_dir)
+                files = tmp_path.glob("*")
+                data = {file.name: file.read_bytes() for file in files}
+                state["_index"] = data
+
+        return state

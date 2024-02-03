@@ -6,19 +6,20 @@ from .utilities import pytest_param_if_value_available
 
 data = SyntheticDataset(
     d=128,  # data dimensionality
-    nt=100_000,  # number of training points
+    nt=10_000,  # number of training points
     nb=100,  # batch query size
     nq=1,  # number of single queries
 )
 
 candidates = {
     "annoy": lambda: AnnoyNeighbors(metric="euclidean", n_search_neighbors=256),
+    "autofaiss": lambda: AutoFaissNeighbors(),
     "faiss-ivf-pq": lambda: FaissNeighbors(index_or_factory="OPQ8,IVF128,PQ8", sample_train_points=10_000),
     "faiss-hnsw-pq": lambda: FaissNeighbors(index_or_factory="OPQ8,HNSW_PQ8"),
     "faiss-nsg-pq": lambda: FaissNeighbors(index_or_factory="OPQ8,NSG_PQ8"),
     "faiss-brute": lambda: FaissNeighbors(index_or_factory="Flat"),
-    "hnsw": lambda: HNSWNeighbors(metric="l2", num_threads=-1, n_search_neighbors=128, n_index_neighbors=256),
-    "hnsw-brute": lambda: HNSWNeighbors(metric="l2", num_threads=-1, use_bruteforce=True),
+    "hnsw": lambda: HNSWNeighbors(metric="l2", n_threads=-1, n_search_neighbors=128, n_index_neighbors=256),
+    "hnsw-brute": lambda: HNSWNeighbors(metric="l2", n_threads=-1, use_bruteforce=True),
     "jax": lambda: JaxNeighbors(compute_mode="use_mm_for_euclid_dist", approximate_recall_target=0.9),
     "numpy": lambda: NumpyNeighbors(metric="minkowski", p=2, compute_mode="use_mm_for_euclid_dist"),
     "scann": lambda: ScannNeighbors(search_parallel=True, use_tree=True, use_bruteforce=False, use_reorder=False),

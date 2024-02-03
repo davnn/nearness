@@ -1,7 +1,10 @@
+import platform
+from uuid import uuid4
 import threading
 from dataclasses import dataclass
 
 import faiss
+import pytest
 from faiss.contrib.datasets import SyntheticDataset
 from typing_extensions import Self, Literal
 
@@ -16,7 +19,6 @@ from sklearn.datasets import load_digits
 import nearness
 from nearness import *
 from nearness._base import InvalidSignatureError
-from nearness._config import config
 from .utilities import *
 
 hypothesis.settings.register_profile("no-deadline", deadline=None)
@@ -28,7 +30,7 @@ class Candidate:
     """Create a test candidate to be checked against a corresponding scikit-learn reference implementation."""
 
     implementation: NearestNeighbors
-    reference: SklearnNeighbors
+    reference: SklearnNeighbors | None = None
 
 
 @dataclass
@@ -61,7 +63,7 @@ candidates = {
         implementation=HNSWNeighbors(metric="l2", use_bruteforce=True), reference=SklearnNeighbors(metric="sqeuclidean")
     ),
     "hnsw": lambda: Candidate(
-        implementation=HNSWNeighbors(metric="l2", n_index_neighbors=32, n_search_neighbors=32, num_links=32),
+        implementation=HNSWNeighbors(metric="l2", n_index_neighbors=32, n_search_neighbors=32, n_links=32),
         reference=SklearnNeighbors(metric="sqeuclidean"),
     ),
     "scipy": lambda: Candidate(
@@ -78,6 +80,8 @@ candidates = {
         implementation=JaxNeighbors(compute_mode="donot_use_mm_for_euclid_dist"),
         reference=SklearnNeighbors(metric="euclidean"),
     ),
+    # algorithms that are not checked against a reference algorithm (yet)
+    "autofaiss": lambda: Candidate(implementation=AutoFaissNeighbors(metric_type="l2")),
 }
 
 candidates = [pytest_param_if_value_available(k, v) for k, v in candidates.items()]
@@ -185,6 +189,9 @@ def test_fit_return_self(data, candidate):
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 @pytest.mark.parametrize("candidate", candidates)
 def test_query(data_and_neighbors, candidate):
+    if candidate.reference is None:
+        pytest.skip()
+
     data, n_neighbors = data_and_neighbors
 
     candidate.reference.fit(data.fit)
@@ -214,6 +221,9 @@ def test_query_idx_dist(data_and_neighbors, candidate):
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 @pytest.mark.parametrize("candidate", candidates)
 def test_query_batch(data_and_neighbors, candidate):
+    if candidate.reference is None:
+        pytest.skip()
+
     data, n_neighbors = data_and_neighbors
 
     candidate.reference.fit(data.fit)
@@ -245,14 +255,13 @@ def test_query_batch_idx_dist(data_and_neighbors, candidate):
 @pytest.mark.parametrize("candidate", candidates)
 def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
     key = request.node.callspec.id
-    save_path = tmp_path / "file"
+    save_path = tmp_path / uuid4().hex
 
     if key == "hnsw-brute":
         pytest.skip("Saving of HSNW index with use_bruteforce=True is not possible currently.")
 
-    if key == "scann":
-        # faiss requires a dictionary to save to instead of a file
-        save_path.mkdir(exist_ok=True)
+    if key == "annoy" and platform.system() == "Windows":
+        pytest.skip("Multiprocessing currently ruins saving on Windows.")
 
     data, n_neighbors = data_and_neighbors
     saved_model = candidate.implementation.fit(data.fit)
@@ -274,15 +283,18 @@ def test_annoy_save_load_identity(data_and_neighbors, tmp_path):
     _, n_dim = data.fit.shape
 
     # build models and save
-    save_model = AnnoyNeighbors(n_trees=1, n_search_neighbors=32)
+    run_id = uuid4().hex
+    save_path, disk_path = tmp_path / f"{run_id}-save.annoy", tmp_path / f"{run_id}-disk.annoy"
+
+    args = dict(n_trees=1, n_search_neighbors=32, load_index_dim=n_dim)
+    save_model = AnnoyNeighbors(**args, save_index_path=save_path)
     save_model.fit(data.fit)
-    save_model.save(tmp_path / "save_model")
-    disk_model = AnnoyNeighbors(n_trees=1, n_search_neighbors=32, on_disk_build=str(tmp_path / "other_model"))
+    disk_model = AnnoyNeighbors(**args, disk_build_path=disk_path)
     disk_model.fit(data.fit)
 
     # load models
-    load_model_save = AnnoyNeighbors(n_trees=1, n_search_neighbors=32, load_dim=n_dim).load(tmp_path / "save_model")
-    load_model_disk = AnnoyNeighbors(n_trees=1, n_search_neighbors=32, load_dim=n_dim).load(tmp_path / "other_model")
+    load_model_save = AnnoyNeighbors(**args, load_index_path=save_path)
+    load_model_disk = AnnoyNeighbors(**args, load_index_path=disk_path)
 
     idx_save, dist_save = save_model.query_batch(data.batch, n_neighbors=n_neighbors)
     idx_disk, dist_disk = disk_model.query_batch(data.batch, n_neighbors=n_neighbors)
@@ -397,7 +409,7 @@ def test_warn_check():
         no_method = True
 
         def __init__(self):
-            self.config.methods_require_check = self.config.methods_require_check | {"no_method"}
+            self.config.methods_require_fit = self.config.methods_require_fit | {"no_method"}
 
         def fit(self, data):
             ...
@@ -407,7 +419,7 @@ def test_warn_check():
 
     class ModelMissingAttribute(NearestNeighbors):
         def __init__(self):
-            self.config.methods_require_check = self.config.methods_require_check | {"missing_method"}
+            self.config.methods_require_fit = self.config.methods_require_fit | {"missing_method"}
 
         def fit(self, data):
             ...
@@ -423,17 +435,17 @@ def test_warn_check():
 
     with pytest.warns(UserWarning, match="Attempting to enable '__fitted__' check for invalid attribute"):
         model = ModelNoConfig()
-        model.config.methods_require_check = model.config.methods_require_check | {"no_method"}
+        model.config.methods_require_fit = model.config.methods_require_fit | {"no_method"}
 
     with pytest.warns(UserWarning, match="Attempting to enable '__fitted__' check for missing attribute"):
         model = ModelNoConfig()
-        model.config.methods_require_check = model.config.methods_require_check | {"missing_method"}
+        model.config.methods_require_fit = model.config.methods_require_fit | {"missing_method"}
 
 
 def test_check_attribute():
     class Model(NearestNeighbors):
         def __init__(self):
-            self.config.remove_check_after_fit = False
+            ...
 
         def fit(self, data):
             return self
@@ -444,36 +456,23 @@ def test_check_attribute():
     model = Model()
 
     # make sure that all methods have a ``__check__`` attribute
-    for method in model.config.methods_require_check:
-        assert hasattr(getattr(model, method), "__check__")
-
-    # make sure that the checks are not removed when configured as such
-    model.fit(None)
-
-    # the methods should still have the attribute (as configured in ``__init__``)
-    for method in model.config.methods_require_check:
-        assert hasattr(getattr(model, method), "__check__")
-
-    model.config.remove_check_after_fit = True
-    model.fit(None)
-
-    # # now after ``fit``, the check should be removed from all methods (as configured)
-    for method in model.config.methods_require_check:
-        assert not hasattr(getattr(model, method), "__check__")
-
-    # resetting the methods should enable the fit checks again
-    model.config.methods_require_check = config.methods_require_check
-
-    for method in model.config.methods_require_check:
+    for method in model.config.methods_require_fit:
         assert hasattr(getattr(model, method), "__check__")
 
     # removing methods should also remove their check
-    model.config.methods_require_check = model.config.methods_require_check - {"query"}
+    model.config.methods_require_fit = model.config.methods_require_fit - {"query"}
     assert not hasattr(model.query, "__check__")
 
     # adding methods should also add their check
-    model.config.methods_require_check = model.config.methods_require_check | {"query"}
+    model.config.methods_require_fit = model.config.methods_require_fit | {"query"}
     assert hasattr(model.query, "__check__")
+
+    # make sure that the checks are removed after fitting
+    model.fit(None)
+
+    # now after ``fit``, the check should be removed from all methods
+    for method in model.config.methods_require_fit:
+        assert not hasattr(getattr(model, method), "__check__")
 
 
 def test_retrieve_version():

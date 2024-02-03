@@ -2,32 +2,31 @@ import inspect
 import threading
 import types
 from abc import ABCMeta, abstractmethod
-from copy import copy, deepcopy
+from copy import deepcopy
 from dataclasses import fields, make_dataclass
 from functools import partial, wraps
 from logging import getLogger
-from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from warnings import warn
 
 import joblib
 import numpy as np
+from joblib import Parallel, delayed
+from safecheck import typecheck
 from typing_extensions import Any, Callable, Self
 
 from ._config import Config, config
+from ._experimental import experimental
 
 logger = getLogger(__name__)
 
 __all__ = [
     "NearestNeighbors",
+    "InvalidSignatureError",
 ]
 
 
 class InvalidSignatureError(ValueError):
-    ...
-
-
-class ParameterTypeError(TypeError):
     ...
 
 
@@ -94,7 +93,7 @@ class NearestNeighborsMeta(ABCMeta):
         obj._parameters_, obj._config_ = cls._parameters_, cls._config_  # noqa: SLF001
         # make sure that the wrapped methods are in sync when the config is changed after class instantiation
         obj._config_.register_callback(  # noqa: SLF001
-            "methods_require_check",
+            "methods_require_fit",
             partial(cls._check_callback, obj=obj),
         )
         cls._wrap_fit_method(obj)
@@ -104,8 +103,9 @@ class NearestNeighborsMeta(ABCMeta):
         return obj
 
     def _check_callback(cls, _: Any, *, obj: "NearestNeighbors") -> None:
-        """A callback to refresh the ``__fitted__`` attributes when the 'methods_require_check' attribute is set ."""
-        cls._wrap_check_method(obj)
+        """A callback to refresh the ``__fitted__`` attributes when the 'methods_require_fit' attribute is set ."""
+        if not obj.is_fitted:  # if the object is already fitted there is no need to wrap any methods
+            cls._wrap_check_method(obj)
 
     def _wrap_fit_method(cls, obj: "NearestNeighbors") -> None:
         """Wrap the ``fit`` method to ensure it sets the ``__fitted__`` attribute and unwraps the query methods.
@@ -120,9 +120,7 @@ class NearestNeighborsMeta(ABCMeta):
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             result = fit(*args, **kwargs)
             logger.debug("Called wrapped fit method with successful fit result, setting '__fitted__'.")
-            obj.__fitted__ = True
-            if obj._config_.remove_check_after_fit:  # noqa: SLF001
-                cls._unwrap_check_method(obj)
+            obj.is_fitted = True
             return result
 
         # we set a ``__fit__`` attribute to denote that the method has been decorated
@@ -130,14 +128,14 @@ class NearestNeighborsMeta(ABCMeta):
         obj.fit = wrapper  # override the default fit with the wrapped fit
 
     def _wrap_check_method(cls, obj: "NearestNeighbors") -> None:
-        """Wrap or unwrap methods according to ``methods_require_check``.
+        """Wrap or unwrap methods according to ``methods_require_fit``.
 
         For each wrapped method, we ensure that ``__fitted__`` is True, before the method can be called.
-        Methods not in ``methods_require_check`` are unwrapped.
+        Methods not in ``methods_require_fit`` are unwrapped.
         """
         logger.debug("Starting to wrap methods to enable fit checking.")
         available_attributes = dir(obj)
-        methods_to_wrap = obj._config_.methods_require_check  # noqa: SLF001
+        methods_to_wrap = obj._config_.methods_require_fit  # noqa: SLF001
         for attribute_name in available_attributes:
             attribute = getattr(obj, attribute_name)
             has_check = hasattr(attribute, "__check__")
@@ -172,16 +170,14 @@ class NearestNeighborsMeta(ABCMeta):
                 warn(msg, stacklevel=1)
 
     def _unwrap_check_method(cls, obj: "NearestNeighbors") -> None:
-        """Unwrap all existing methods in ``methods_require_check`` to disable the ``__fitted__`` check.
+        """Unwrap all existing methods in ``methods_require_fit`` to disable the ``__fitted__`` check.
 
         This is just a performance optimization, it retrieves the original method and removes the implicitly
         generated function wrapper (decorator). It should be safe to unwrap the methods if ``__fitted__``
         is only set in ``fit``, but unsafe when ``__fitted__`` is manually set to ``False`` after ``fit``.
-        If manually setting the ``__fitted__`` attribute is required, then the configuration should be
-        set to ``remove_check_after_fit = False``.
         """
         logger.debug("Starting to unwrap all fit checking methods.")
-        for method_name in obj._config_.methods_require_check:  # noqa: SLF001
+        for method_name in obj._config_.methods_require_fit:  # noqa: SLF001
             # we set an __requires_fit__ attribute on the wrapper, because using ``__wrapped__`` alone is not
             # safe (methods also use ``__wrapped__`` starting with Python 3.10)
             if hasattr(obj, method_name) and hasattr(method := getattr(obj, method_name), "__check__"):
@@ -206,31 +202,75 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
 
     @abstractmethod
     def fit(self, data: np.ndarray) -> Self:
+        """Learn an index structure based on a matrix of points.
+
+        :param data: matrix of ``size x dim``.
+        :return: reference to object (``self``).
+        """
         ...
 
     @abstractmethod
     def query(self, point: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]:
+        """Search ``n_neighbors`` for a single point, returning the indices and distances.
+
+        :param point: vector of ``dim``.
+        :param n_neighbors: number of neighbors to search.
+        :return:  (vector of indices, vector of distances) of size ``n_neighbors``
+        """
         ...
 
+    @experimental
     def query_idx(self, point: np.ndarray, n_neighbors: int) -> np.ndarray:
+        """Search ``n_neighbors`` for a single point, returning the indices.
+
+        :param point: vector of ``dim``.
+        :param n_neighbors: number of neighbors to search.
+        :return: vector of indices of size ``n_neighbors``
+        """
         idx, _ = self.query(point, n_neighbors)
         return idx
 
+    @experimental
     def query_dist(self, point: np.ndarray, n_neighbors: int) -> np.ndarray:
+        """Search ``n_neighbors`` for a single point (vector), returning the distances.
+
+        :param point: vector of ``dim``.
+        :param n_neighbors: number of neighbors to search.
+        :return: vector of distances of size ``n_neighbors``
+        """
         _, dist = self.query(point, n_neighbors)
         return dist
 
     def query_batch(self, points: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]:
-        pool = ThreadPool()
-        result = pool.map(lambda q: self.query(q, n_neighbors), points)
+        """Search ``n_neighbors`` for a batch of points, returning the indices and distances.
+
+        :param points: matrix of ``batch x dim``.
+        :param n_neighbors: number of neighbors to search.
+        :return: (matrix of indices, matrix of distances) of size ``batch x n_neighbors``.
+        """
+        result = Parallel(prefer="threads")(delayed(self.query)(q, n_neighbors) for q in points)
         idx, dist = zip(*result)
         return np.stack(idx), np.stack(dist)
 
+    @experimental
     def query_batch_idx(self, points: np.ndarray, n_neighbors: int) -> np.ndarray:
+        """Search ``n_neighbors`` for a batch of points, returning the indices.
+
+        :param points: matrix of ``batch x dim``.
+        :param n_neighbors: number of neighbors to search.
+        :return: matrix of indices ``batch x n_neighbors``.
+        """
         idx, _ = self.query_batch(points, n_neighbors)
         return idx
 
+    @experimental
     def query_batch_dist(self, points: np.ndarray, n_neighbors: int) -> np.ndarray:
+        """Search ``n_neighbors`` for a batch of points, returning the distances.
+
+        :param points: matrix of ``batch x dim``.
+        :param n_neighbors: number of neighbors to search.
+        :return: matrix of distances ``batch x n_neighbors``.
+        """
         _, dist = self.query_batch(points, n_neighbors)
         return dist
 
@@ -251,35 +291,62 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
         raise NotImplementedError(msg)
 
     def save(self, file: str | Path) -> None:
-        # unwrap the fit method such that it equals the original one (if it has the special ``__check__`` attribute)
-        self.fit = (
+        """Save the state of the model using pickle such that it can be fully restored using ``load``.
+
+        :param file: name or path of the file to save to.
+        :return: nothing.
+        """
+        joblib.dump(
+            self,
+            filename=file,
+            protocol=self.config.save_protocol,
+            compress=self.config.save_compression,
+        )
+
+    @staticmethod
+    def load(file: str | Path) -> "NearestNeighbors":
+        """Load a model using pickle to fully restore the saved state.
+
+        :param file: name or path of the file to load from.
+        :return: the restored ``NearestNeighbors`` algorithm.
+        """
+        return joblib.load(file)
+
+    def __setstate__(self, state: dict[str, Any]) -> None:
+        parameter_types, parameter_values = state["_parameters_"]
+        state["_parameters_"] = make_dataclass("Parameters", parameter_types)(**parameter_values)
+        self.__dict__.update(state)
+        NearestNeighbors._wrap_fit_method(self)  # re-wrap the fit method
+        self.is_fitted = self.__fitted__  # wrap or unwrap the check methods depending on ``__fitted__``
+
+    def __getstate__(self) -> dict[str, Any]:
+        self.fit = (  # unwrap the fit method if wrapped
             self.fit.__wrapped__  # type: ignore[reportFunctionMemberAccess]
             if hasattr(self.fit, "__fit__")
             else self.fit
         )
-        # the dynamic dataclass is not pickleable, therefore we "serialize" it and override ``_parameters_`` on load
-        original_params = copy(self._parameters_)
-        try:
-            parameter_fields = fields(self._parameters_)
-            parameter_types = [(f.name, f.type) for f in parameter_fields]
-            parameter_values = {f.name: getattr(self._parameters_, f.name) for f in parameter_fields}
-            del self._parameters_
-            joblib.dump(
-                [self, parameter_types, parameter_values],
-                filename=file,
-                protocol=self.config.save_protocol,
-                compress=self.config.save_compression,
-            )
-        finally:
-            self._parameters_ = original_params  # type: ignore[reportUninitializedInstanceVariable]
+        NearestNeighbors._unwrap_check_method(self)
+        state = self.__dict__.copy()
+        parameter_fields = fields(self._parameters_)
+        parameter_types = [(f.name, f.type) for f in parameter_fields]
+        parameter_values = {f.name: getattr(self._parameters_, f.name) for f in parameter_fields}
+        state["_parameters_"] = (parameter_types, parameter_values)
+        return state
 
-    def load(self, file: str | Path) -> "NearestNeighbors":
-        # we might wrap the fit_method again here, but it's not strictly necessary if we assume that
-        # the model is ``__fitted__`` already, i.e. a check is unnecessary.
-        model, parameter_types, parameter_values = joblib.load(file)
-        model.__fitted__ = True
-        model._parameters_ = make_dataclass("Parameters", parameter_types)(**parameter_values)  # noqa: SLF001
-        return self
+    @property
+    def is_fitted(self) -> bool:
+        return self.__fitted__
+
+    @is_fitted.setter
+    @typecheck
+    def is_fitted(self, value: bool) -> None:
+        if value:
+            NearestNeighbors._unwrap_check_method(self)
+
+        if not value:
+            NearestNeighbors._wrap_check_method(self)
+
+        self.__fitted__ = value
 
     @property
     def config(self) -> "Config":
@@ -289,10 +356,7 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
     def parameters(self) -> Any:
         """The parameters are dynamically set on class creation due to the ``NearestNeighborsMeta`` metaclass.
 
-        All ``__init__`` arguments are considered parameters, and it is suggested to type-hint every parameter,
-        because those type hints are used in ``set_parameters`` to validate the input arguments.
-
-        :return:
+        All ``__init__`` arguments are considered parameters, and it is suggested to type-hint every parameter.
         """
         return self._parameters_
 
@@ -303,15 +367,15 @@ def _create_parameter_class(
 ) -> "types.Parameters":  # type: ignore[reportGeneralTypeIssues]
     empty = inspect.Parameter.empty
     parameter_types = [(k, Any if (a := v.annotation) is empty else a) for k, v in parameters.items()]
-    # determine the parameter values
     parameter_values = {k: kwargs[k] if k in kwargs else v.default for k, v in parameters.items()}
-    return make_dataclass("Parameters", parameter_types)(**parameter_values)
+    return make_dataclass("Parameters", parameter_types)(**parameter_values)  # type: ignore[reportArgumentType]
 
 
 def _create_check_wrapper(obj: NearestNeighbors, method: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(method)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         logger.debug("Called method with fit check enabled.")
-        if not obj.__fitted__:
+        if not obj.is_fitted:
             msg = f"Attempted to call '{method.__qualname__}', but 'fit' has not yet been called."
             raise AssertionError(msg)
         return method(*args, **kwargs)

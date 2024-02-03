@@ -17,8 +17,8 @@ class HNSWNeighbors(NearestNeighbors):
         metric: available_metrics = "l2",
         n_index_neighbors: int = 256,
         n_search_neighbors: int | None = None,
-        num_links: int = 16,
-        num_threads: int = -1,
+        n_links: int = 16,
+        n_threads: int = -1,
         random_seed: int = 0,
         use_bruteforce: bool = False,
         load_dim: int | None = None,
@@ -39,7 +39,7 @@ class HNSWNeighbors(NearestNeighbors):
             index.init_index(
                 max_elements=n_samples,
                 ef_construction=self.parameters.n_index_neighbors,
-                M=self.parameters.num_links,
+                M=self.parameters.n_links,
                 random_seed=self.parameters.random_seed,
             )
             index.add_items(data)
@@ -63,5 +63,5 @@ class HNSWNeighbors(NearestNeighbors):
         points: Float[NumpyArray, "m d"],
         n_neighbors: int,
     ) -> tuple[UInt64[NumpyArray, "m {n_neighbors}"], Float32[NumpyArray, "m {n_neighbors}"]]:
-        idx, dist = self._model.knn_query(points, k=n_neighbors, num_threads=self.parameters.num_threads)
+        idx, dist = self._model.knn_query(points, k=n_neighbors, num_threads=self.parameters.n_threads)
         return idx, dist

@@ -58,6 +58,9 @@ tasks:
     typing:
         cmd: poetry run pyright
 
+    typing-quality:
+        cmd: poetry run pyright --ignoreexternal --verifytypes nearness
+
     safety:
         cmds:
             - poetry run safety check --full-report
