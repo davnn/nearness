@@ -1,9 +1,7 @@
-from pathlib import Path
-
 import faiss
 import numpy as np
-from safecheck import Float, Float32, Int64, Is, NumpyArray, typecheck
-from typing_extensions import Annotated, Any, Protocol, runtime_checkable
+from safecheck import Float, Float32, Int64, NumpyArray, typecheck
+from typing_extensions import Any, Protocol, runtime_checkable
 
 from ._base import NearestNeighbors
 
@@ -38,40 +36,26 @@ class FaissNeighbors(NearestNeighbors):
         - https://www.pinecone.io/learn/series/faiss/
     """
 
-    positive_integer = Annotated[int, Is[lambda i: i > 0]]
-    float_fraction = Annotated[float, Is[lambda f: 0 < f < 1]]
-
     @typecheck
     def __init__(
         self,
         *,
         index_or_factory: str | FaissIndexFactory | faiss.Index = "Flat",
         add_data_on_fit: bool = True,
-        sample_train_points: positive_integer | float_fraction | None = None,
+        sample_train_points: int | float | None = None,
         sample_with_replacement: bool = False,
-        rng: np.random.Generator | Any = None,  # (Any-types are validated by default_rng)
+        rng: Any = None,  # types are validated by default_rng
     ) -> None:
         super().__init__()
         self.parameters.rng = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
 
         # to be defined in ``fit``
-        self._index = None
+        self._index: faiss.Index | None = None
 
     @typecheck
     def fit(self, data: Float[NumpyArray, "n d"]) -> "FaissNeighbors":
         n_samples, dim = data.shape
-        index = self.parameters.index_or_factory
-
-        if isinstance(index, str):
-            # if the index is a string, we treat it as an index factory
-            self._index = faiss.index_factory(dim, index)
-        elif isinstance(index, faiss.Index):
-            # if the index is an existing index, simply use that
-            self._index = index
-        else:
-            # otherwise the index should be a callable returning an index
-            self._index = index(dim)
-
+        self._index = self._create_index(dim)
         if (n_train := self.parameters.sample_train_points) is not None:
             if isinstance(n_train, float):
                 # we make sure float is 0 < float < 1 in ``__init__``
@@ -109,10 +93,15 @@ class FaissNeighbors(NearestNeighbors):
         dist, idx = self._index.search(points, n_neighbors)  # type: ignore[reportGeneralTypeIssues]
         return idx, dist
 
-    def save(self, file: str | Path) -> None:
-        faiss.write_index(self._index, str(file))
+    def _create_index(self, dim: int) -> faiss.Index:
+        index = self.parameters.index_or_factory
+        if isinstance(index, str):
+            # if the index is a string, we treat it as an index factory
+            return faiss.index_factory(dim, index)
 
-    def load(self, file: str | Path) -> "FaissNeighbors":
-        self._index = faiss.read_index(str(file))
-        self.__fitted__ = True
-        return self
+        if isinstance(index, faiss.Index):
+            # if the index is an existing index, simply use that
+            return index
+
+        # otherwise the index should be a callable returning an index
+        return index(dim)
