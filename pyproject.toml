@@ -41,11 +41,11 @@ typing-extensions = ">=4"
 numpy = { version = ">=1", optional = true }
 scipy = { version = ">=1", optional = true }
 scikit-learn = { version = ">=1", optional = true }
+autofaiss = { version = ">=2.17", optional = true }
 faiss-cpu = { version = "^1", optional = true }
 annoy = { version = "^1", optional = true }
 hnswlib = { version = "^0.8", optional = true }
 scann = { version = "^1", optional = true, platform = "linux", markers = "python_version < '3.12'" }
-glassppy = { version = "^1", optional = true, platform = "linux", markers = "python_version == '3.10'" }
 jax = { version = ">=0.4", source = "pypi", extras = ["cpu"], optional = true }
 torch = [
     { version = ">=1", platform = "darwin", source = "pypi", optional = true },
@@ -59,10 +59,10 @@ numpy = ["numpy"]
 scipy = ["scipy"]
 hnswlib = ["hnswlib"]
 scikit-learn = ["scikit-learn"]
+autofaiss = ["autofaiss", "faiss-cpu"]
 faiss = ["faiss-cpu"]
 torch = ["torch"]
 scann = ["scann"]
-glass = ["glassppy"]
 jax = ["jax"]
 
 [tool.poetry.group.dev.dependencies]

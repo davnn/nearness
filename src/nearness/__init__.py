@@ -40,6 +40,13 @@ except ImportError:  # pragma: no cover
     ...
 
 try:
+    from ._autofaiss import AutoFaissNeighbors
+
+    __all__ += ["AutoFaissNeighbors"]
+except ImportError:  # pragma: no cover
+    ...
+
+try:
     from ._faiss import FaissNeighbors
 
     __all__ += ["FaissNeighbors"]

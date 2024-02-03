@@ -27,7 +27,7 @@ class Candidate:
     """Create a test candidate to be checked against a corresponding scikit-learn reference implementation."""
 
     implementation: NearestNeighbors
-    reference: SklearnNeighbors
+    reference: SklearnNeighbors | None = None
 
 
 @dataclass
@@ -77,6 +77,8 @@ candidates = {
         implementation=JaxNeighbors(compute_mode="donot_use_mm_for_euclid_dist"),
         reference=SklearnNeighbors(metric="euclidean"),
     ),
+    # algorithms that are not checked against a reference algorithm (yet)
+    "autofaiss": lambda: Candidate(implementation=AutoFaissNeighbors(metric_type="l2")),
 }
 
 candidates = [pytest_param_if_value_available(k, v) for k, v in candidates.items()]
@@ -184,6 +186,9 @@ def test_fit_return_self(data, candidate):
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 @pytest.mark.parametrize("candidate", candidates)
 def test_query(data_and_neighbors, candidate):
+    if candidate.reference is None:
+        pytest.skip()
+
     data, n_neighbors = data_and_neighbors
 
     candidate.reference.fit(data.fit)
@@ -213,6 +218,9 @@ def test_query_idx_dist(data_and_neighbors, candidate):
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 @pytest.mark.parametrize("candidate", candidates)
 def test_query_batch(data_and_neighbors, candidate):
+    if candidate.reference is None:
+        pytest.skip()
+
     data, n_neighbors = data_and_neighbors
 
     candidate.reference.fit(data.fit)
