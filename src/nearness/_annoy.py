@@ -1,5 +1,6 @@
 import tempfile
 from pathlib import Path
+from uuid import uuid4
 
 import numpy as np
 from annoy import AnnoyIndex
@@ -104,7 +105,8 @@ class AnnoyNeighbors(NearestNeighbors):
         state = super().__getstate__()
         if self._index is not None:
             with tempfile.TemporaryDirectory() as tmp_dir:
-                file_path = Path(tmp_dir) / "index"
+                # use a unique file name, otherwise there might be troubles in multiprocessing settings
+                file_path = Path(tmp_dir) / uuid4().hex
                 self._index.save(str(file_path), prefault=self.parameters.prefault)
                 state["_index"] = file_path.read_bytes()
         return state

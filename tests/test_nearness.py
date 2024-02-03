@@ -1,7 +1,10 @@
+import platform
+from uuid import uuid4
 import threading
 from dataclasses import dataclass
 
 import faiss
+import pytest
 from faiss.contrib.datasets import SyntheticDataset
 from typing_extensions import Self, Literal
 
@@ -252,10 +255,13 @@ def test_query_batch_idx_dist(data_and_neighbors, candidate):
 @pytest.mark.parametrize("candidate", candidates)
 def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
     key = request.node.callspec.id
-    save_path = tmp_path / "file"
+    save_path = tmp_path / uuid4().hex
 
     if key == "hnsw-brute":
         pytest.skip("Saving of HSNW index with use_bruteforce=True is not possible currently.")
+
+    if key == "annoy" and platform.system() == "Windows":
+        pytest.skip("Multiprocessing currently ruins saving on Windows.")
 
     data, n_neighbors = data_and_neighbors
     saved_model = candidate.implementation.fit(data.fit)
@@ -277,15 +283,18 @@ def test_annoy_save_load_identity(data_and_neighbors, tmp_path):
     _, n_dim = data.fit.shape
 
     # build models and save
-    save_path, disk_path = tmp_path / "s.annoy", tmp_path / "o.annoy"
-    save_model = AnnoyNeighbors(n_trees=1, n_search_neighbors=32, save_index_path=save_path)
+    run_id = uuid4().hex
+    save_path, disk_path = tmp_path / f"{run_id}-save.annoy", tmp_path / f"{run_id}-disk.annoy"
+
+    args = dict(n_trees=1, n_search_neighbors=32, load_index_dim=n_dim)
+    save_model = AnnoyNeighbors(**args, save_index_path=save_path)
     save_model.fit(data.fit)
-    disk_model = AnnoyNeighbors(n_trees=1, n_search_neighbors=32, disk_build_path=disk_path)
+    disk_model = AnnoyNeighbors(**args, disk_build_path=disk_path)
     disk_model.fit(data.fit)
 
     # load models
-    load_model_save = AnnoyNeighbors(n_trees=1, n_search_neighbors=32, load_index_dim=n_dim, load_index_path=save_path)
-    load_model_disk = AnnoyNeighbors(n_trees=1, n_search_neighbors=32, load_index_dim=n_dim, load_index_path=disk_path)
+    load_model_save = AnnoyNeighbors(**args, load_index_path=save_path)
+    load_model_disk = AnnoyNeighbors(**args, load_index_path=disk_path)
 
     idx_save, dist_save = save_model.query_batch(data.batch, n_neighbors=n_neighbors)
     idx_disk, dist_disk = disk_model.query_batch(data.batch, n_neighbors=n_neighbors)
