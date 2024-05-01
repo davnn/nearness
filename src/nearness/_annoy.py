@@ -42,7 +42,7 @@ class AnnoyNeighbors(NearestNeighbors):
             index = AnnoyIndex(self.parameters.load_index_dim, self.parameters.metric)
             index.load(str(path))
             self._index = index
-            self.is_fitted = True
+            self.__fitted__ = True
 
     @overload
     def fit(self, data: Iterable[Real[NumpyArray, "d"]]) -> "AnnoyNeighbors": ...
