@@ -95,9 +95,18 @@ class NearestNeighborsMeta(ABCMeta):
             "methods_require_fit",
             partial(cls._check_callback, obj=obj),
         )
-        obj.__fitted__ = False
+        if not hasattr(obj, "__fitted__"):
+            msg = (
+                f"Instantiated {obj}, but missing the '__fitted__' attribute, which is automatically set to False in "
+                f"'NearestNeighbors.__init__', did you forget to call 'super().__init__()' in the '__init__' of "
+                f"{obj}? Assuming that '__fitted__' is 'False'."
+            )
+            warn(msg, stacklevel=1)
+            obj.__fitted__ = False
+        if not obj.__fitted__:
+            # __fitted__ might be true if the index is pre-loaded in the ``__init__``.
+            cls._wrap_check_method(obj)
         cls._wrap_fit_method(obj)
-        cls._wrap_check_method(obj)
         del cls._parameters_
         del cls._config_
         return obj
@@ -197,6 +206,10 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
     and overloads is that they should be type stable, preferably allowing only floating-point arrays as input
     and returning floating-point distances of equal type as output.
     """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.__fitted__ = False
 
     @abstractmethod
     def fit(self, data: np.ndarray) -> Self:
@@ -345,7 +358,7 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
             NearestNeighbors._wrap_check_method(self)
 
         # this variable is initialized in the metaclass
-        self.__fitted__ = value  # type: ignore[reportUninitializedInstanceVariable]
+        self.__fitted__ = value
 
     @property
     def config(self) -> "Config":

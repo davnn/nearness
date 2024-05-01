@@ -362,7 +362,6 @@ def test_thread_safety():
 
         # Get the current thread id
         thread_id = threading.current_thread().ident
-        original_thread_ids.add(thread_id)
 
         # Set the thread id on the model
         model = Model(thread_id=thread_id)
@@ -398,14 +397,16 @@ def test_keyword_only():
     with pytest.raises(InvalidSignatureError):
 
         class N(NearestNeighbors):
-            def __init__(self, a): ...
+            def __init__(self, a):
+                super().__init__()
 
 
 def test_warn_check():
     class ModelNoConfig(NearestNeighbors):
         no_method = True
 
-        def __init__(self): ...
+        def __init__(self):
+            super().__init__()
 
         def fit(self, data): ...
 
@@ -415,6 +416,7 @@ def test_warn_check():
         no_method = True
 
         def __init__(self):
+            super().__init__()
             self.config.methods_require_fit = self.config.methods_require_fit | {"no_method"}
 
         def fit(self, data): ...
@@ -423,6 +425,7 @@ def test_warn_check():
 
     class ModelMissingAttribute(NearestNeighbors):
         def __init__(self):
+            super().__init__()
             self.config.methods_require_fit = self.config.methods_require_fit | {"missing_method"}
 
         def fit(self, data): ...
@@ -446,7 +449,8 @@ def test_warn_check():
 
 def test_check_attribute():
     class Model(NearestNeighbors):
-        def __init__(self): ...
+        def __init__(self):
+            super().__init__()
 
         def fit(self, data):
             return self
