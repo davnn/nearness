@@ -66,18 +66,18 @@ scann = ["scann"]
 jax = ["jax"]
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.0.0"
+pytest = "^8.2.0"
 pytest-html = "^4.1.1"
-hypothesis = "^6.97.5"
-coverage = "^7.4.1"
-pytest-cov = "^4.1.0"
-coverage-badge = "^1.1.0"
-ruff = "^0.2.0"
-pre-commit = "^3.6.0"
-black = "^24.1.1"
-pyright = "^1.1.349"
-bandit = "^1.7.7"
-safety = "^3.0.1"
+hypothesis = "^6.100.2"
+coverage = "^7.5.0"
+pytest-cov = "^5.0.0"
+coverage-badge = "^1.1.1"
+ruff = "^0.4.2"
+pre-commit = "^3.7.0"
+black = "^24.4.2"
+pyright = "^1.1.360"
+bandit = "^1.7.8"
+safety = "^3.1.0"
 notebook = "^7.0.4"
 pytest-benchmark = "^4.0.0"
 
@@ -200,4 +200,4 @@ source = ["src/nearness"]
 
 [tool.coverage.report]
 show_missing = true
-exclude_lines = ["pragma: no cover", "@overload", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+exclude_lines = ["pragma: no cover", "@overload", "@abstractmethod", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]

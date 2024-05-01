@@ -22,6 +22,9 @@ Before submitting your code as a pull request please do the following steps:
 Conveniently, you can run `task check`, to combine the mentioned commands before contributing a commit.
 We use [gitmoji](https://gitmoji.dev/) to categorize different kinds of commits.
 
+In addition to the checks performed using `task check`, we advise to install the pre-commit hooks
+using `task pre-commit-install`, which identifies common problems before commiting to a branch.
+
 ## Contributing without `task`
 
 We use [task](https://taskfile.dev/) to provide pre-configured CLI commands for the project, but `task` is
@@ -34,8 +37,9 @@ We use [micromamba](https://github.com/mamba-org/mamba) to set up a Python envir
 for [poetry](https://python-poetry.org/). Make sure that ``micromamba`` is installed
 and available. Run `task env-create` to create an empty Python 3.10 environment named `nearness`. After you have
 successfully created the environment activate it with `micromamba activate nearness`. If `poetry` is not already
-installed, run `task poetry-install`. Using the activated `nearness` environment check if poetry is using the right
-environment with `poetry env info`. Once the poetry setup is complete, you are ready to install the dependencies.
+installed, run `task poetry-setup`. Using the activated `nearness` environment check if poetry is using the right
+environment with `poetry env info`. Once the poetry setup is complete, you are ready to install the dependencies
+with `task poetry-install`.
 
 Note that Conda, Mamba or Micromamba is not necessary, you can use a tool of your choice to manage your Python
 environment. One benefit of using Conda is that we can override packages that are not easy to install with `pip`,
