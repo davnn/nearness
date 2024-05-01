@@ -1,5 +1,3 @@
-from copy import copy
-
 import pytest
 import numpy as np
 from typing_extensions import Any
@@ -23,6 +21,15 @@ def array_equal(x: np.ndarray, y: np.ndarray, *arrays: np.ndarray, equal_nan: bo
 
 def pytest_param_if_value_available(key: str, lazy_value: Any) -> Any:  # type: ignore[ANN401]
     try:
-        return pytest.param(copy(lazy_value()), id=key)
+        return pytest.param(lazy_value(), id=key)
     except NameError:
-        return pytest.param(None, id=key, marks=pytest.mark.skip)
+        reason = f"Skipping test, {key} is not available."
+        return pytest.param(None, id=key, marks=pytest.mark.skip(reason=reason))
+
+
+def value_is_missing(lazy_value: Any) -> bool:
+    try:
+        lazy_value()
+        return False
+    except NameError:
+        return True

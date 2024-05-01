@@ -87,7 +87,7 @@ class NearestNeighborsMeta(ABCMeta):
         logger.info("Determined parameters as '%s'", cls._parameters_)
 
         # now we set all the relevant attributes on the ``instance``, as they should not be class-bound.
-        # order is important here as ``__wrap_fit_method`` and ``__wrap_check_method`` depend on the set attributes
+        # order is important here as ``_wrap_fit_method`` and ``_wrap_check_method`` depend on the set attributes
         obj = type.__call__(cls, **kwargs)
         obj._parameters_, obj._config_ = cls._parameters_, cls._config_  # noqa: SLF001
         # make sure that the wrapped methods are in sync when the config is changed after class instantiation
@@ -95,6 +95,7 @@ class NearestNeighborsMeta(ABCMeta):
             "methods_require_fit",
             partial(cls._check_callback, obj=obj),
         )
+        obj.__fitted__ = False
         cls._wrap_fit_method(obj)
         cls._wrap_check_method(obj)
         del cls._parameters_
@@ -102,16 +103,16 @@ class NearestNeighborsMeta(ABCMeta):
         return obj
 
     def _check_callback(cls, _: Any, *, obj: "NearestNeighbors") -> None:
-        """A callback to refresh the ``__fitted__`` attributes when the 'methods_require_fit' attribute is set ."""
+        """A callback to refresh the ``__fitted__`` attributes when the 'methods_require_fit' attribute is updated."""
         if not obj.is_fitted:  # if the object is already fitted there is no need to wrap any methods
             cls._wrap_check_method(obj)
 
     def _wrap_fit_method(cls, obj: "NearestNeighbors") -> None:
-        """Wrap the ``fit`` method to ensure it sets the ``__fitted__`` attribute and unwraps the query methods.
+        """Wrap the ``fit`` method to ensure it sets ``is_fitted`` to ``True``, which unwraps the query method checks.
 
         This feels a bit like magic, but the alternatives would be to:
-        1. Add a decorator to every ``fit`` method that sets ``__fitted__``.
-        2. Set the ``__fitted__`` attribute on every ``fit``-like method and check for ``__fitted__`` everywhere.
+        1. Add a decorator to every ``fit`` method that sets ``is_fitted`` to ``True``.
+        2. Set ``is_fitted`` on every ``fit``-like method and check for ``is_fitted`` everywhere.
         """
         fit = obj.fit
 
@@ -173,7 +174,7 @@ class NearestNeighborsMeta(ABCMeta):
 
         This is just a performance optimization, it retrieves the original method and removes the implicitly
         generated function wrapper (decorator). It should be safe to unwrap the methods if ``__fitted__``
-        is only set in ``fit``, but unsafe when ``__fitted__`` is manually set to ``False`` after ``fit``.
+        is set in ``fit``, but unsafe when ``__fitted__`` is manually set to ``False`` after ``fit``.
         """
         logger.debug("Starting to unwrap all fit checking methods.")
         for method_name in obj._config_.methods_require_fit:  # noqa: SLF001
@@ -196,8 +197,6 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
     and overloads is that they should be type stable, preferably allowing only floating-point arrays as input
     and returning floating-point distances of equal type as output.
     """
-
-    __fitted__ = False
 
     @abstractmethod
     def fit(self, data: np.ndarray) -> Self:
@@ -345,7 +344,8 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
         if not value:
             NearestNeighbors._wrap_check_method(self)
 
-        self.__fitted__ = value
+        # this variable is initialized in the metaclass
+        self.__fitted__ = value  # type: ignore[reportUninitializedInstanceVariable]
 
     @property
     def config(self) -> "Config":
@@ -367,7 +367,7 @@ def _create_parameter_class(
     empty = inspect.Parameter.empty
     parameter_types = [(k, Any if (a := v.annotation) is empty else a) for k, v in parameters.items()]
     parameter_values = {k: kwargs.get(k, v.default) for k, v in parameters.items()}
-    return make_dataclass("Parameters", parameter_types)(**parameter_values)  # type: ignore[reportArgumentType]
+    return make_dataclass("Parameters", parameter_types)(**parameter_values)
 
 
 def _create_check_wrapper(obj: NearestNeighbors, method: Callable[..., Any]) -> Callable[..., Any]:
