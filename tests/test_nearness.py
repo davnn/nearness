@@ -38,7 +38,7 @@ class Data:
     batch: np.ndarray
 
 
-candidates = {
+candidates_original = {
     # comparing two equal models might seem unnecessary, but some tests are only performed on the ``implementation``
     "sklearn": lambda: Candidate(
         implementation=SklearnNeighbors(metric="minkowski", p=2), reference=SklearnNeighbors(metric="minkowski", p=2)
@@ -83,8 +83,13 @@ candidates = {
     ),
 }
 
-candidates = [pytest_param_if_value_available(k, v) for k, v in candidates.items()]
+candidates = [pytest_param_if_value_available(k, v) for k, v in candidates_original.items()]
 DataGenerationMethod = Literal["random", "mds", "digits", "synthetic"]
+
+
+def skip_if_missing(key: str) -> Any:
+    reason = f"Skipping test, {key} is not available."
+    return pytest.mark.skipif(value_is_missing(candidates_original[key]), reason=reason)
 
 
 def make_data(
@@ -188,9 +193,6 @@ def test_fit_return_self(data, candidate):
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 @pytest.mark.parametrize("candidate", candidates)
 def test_query(data_and_neighbors, candidate):
-    if candidate.reference is None:
-        pytest.skip()
-
     data, n_neighbors = data_and_neighbors
 
     candidate.reference.fit(data.fit)
@@ -220,9 +222,6 @@ def test_query_idx_dist(data_and_neighbors, candidate):
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 @pytest.mark.parametrize("candidate", candidates)
 def test_query_batch(data_and_neighbors, candidate):
-    if candidate.reference is None:
-        pytest.skip()
-
     data, n_neighbors = data_and_neighbors
 
     candidate.reference.fit(data.fit)
@@ -271,6 +270,7 @@ def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
     assert approx_equal(dist_save, dist_load)
 
 
+@skip_if_missing("annoy")
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 @hypothesis.settings(suppress_health_check=[hypothesis.HealthCheck.function_scoped_fixture])
 def test_annoy_save_load_identity(data_and_neighbors, tmp_path):
@@ -320,11 +320,30 @@ def test_faiss_index_creation(data_and_neighbors):
     assert approx_equal(dist_str, dist_fun, dist_raw)
 
 
+@skip_if_missing("torch")
+@hypothesis.given(data_and_neighbors=neighbors_strategy())
+def test_torch_tensor_input(data_and_neighbors):
+    import torch
+
+    data, n_neighbors = data_and_neighbors
+    fit, query, batch = map(torch.from_numpy, [data.fit, data.query, data.batch])
+    candidate = candidates_original["torch"]()
+    candidate.implementation.fit(fit)
+    candidate.reference.fit(data.fit)
+
+    query_idx_numpy, query_dist_numpy = candidate.reference.query(data.query, n_neighbors=n_neighbors)
+    query_idx_torch, query_dist_torch = candidate.implementation.query(query, n_neighbors=n_neighbors)
+    batch_idx_numpy, batch_dist_numpy = candidate.reference.query_batch(data.batch, n_neighbors=n_neighbors)
+    batch_idx_torch, batch_dist_torch = candidate.implementation.query_batch(batch, n_neighbors=n_neighbors)
+
+    assert array_equal(query_idx_numpy, query_idx_torch.numpy())
+    assert approx_equal(batch_dist_numpy, batch_dist_torch.numpy())
+
+
 def test_thread_safety():
     # Number of threads to create
     num_threads = 100
-    original_thread_ids = set()
-    captured_thread_ids = set()
+    invalid_thread_ids = set()
 
     class Model(NearestNeighbors):
         def __init__(self, *, thread_id: int):
@@ -348,10 +367,9 @@ def test_thread_safety():
         # Set the thread id on the model
         model = Model(thread_id=thread_id)
         captured_id = model.parameters.thread_id
-        captured_thread_ids.add(captured_id)
 
-        # Perform any assertions on the instance
-        assert thread_id == model.parameters.thread_id
+        if thread_id != captured_id:
+            invalid_thread_ids.add((thread_id, captured_id))
 
     # Create and start threads
     threads = [threading.Thread(target=create_instance) for _ in range(num_threads)]
@@ -366,8 +384,7 @@ def test_thread_safety():
         thread.join()
 
     # Perform any additional assertions or checks
-    assert len(captured_thread_ids) == len(original_thread_ids)
-    assert captured_thread_ids == original_thread_ids
+    assert len(invalid_thread_ids) == 0
 
 
 def test_missing_abstract_method():
