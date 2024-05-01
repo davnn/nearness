@@ -20,3 +20,4 @@
 <!-- Mark with an `x` all the checkboxes that apply (like `[x]`) -->
 
 - [ ] I've checked the code using `task check`.
+- [ ] I've checked the repository using `pre-commit`.
