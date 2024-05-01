@@ -1,7 +1,6 @@
 import faiss
-import numpy as np
 from safecheck import Float, Float32, Int64, NumpyArray, typecheck
-from typing_extensions import Any, Protocol, runtime_checkable
+from typing_extensions import Protocol, runtime_checkable
 
 from ._base import NearestNeighbors
 
@@ -42,29 +41,16 @@ class FaissNeighbors(NearestNeighbors):
         *,
         index_or_factory: str | FaissIndexFactory | faiss.Index = "Flat",
         add_data_on_fit: bool = True,
-        sample_train_points: int | float | None = None,
-        sample_with_replacement: bool = False,
-        rng: Any = None,  # types are validated by default_rng
     ) -> None:
         super().__init__()
-        self.parameters.rng = rng if isinstance(rng, np.random.Generator) else np.random.default_rng(rng)
-
         # to be defined in ``fit``
         self._index: faiss.Index | None = None
 
     @typecheck
     def fit(self, data: Float[NumpyArray, "n d"]) -> "FaissNeighbors":
-        n_samples, dim = data.shape
+        _, dim = data.shape
         self._index = self._create_index(dim)
-        if (n_train := self.parameters.sample_train_points) is not None:
-            if isinstance(n_train, float):
-                # we make sure float is 0 < float < 1 in ``__init__``
-                n_train = int(n_train * n_samples)
-
-            sample = self.parameters.rng.choice(data, size=n_train, replace=self.parameters.sample_with_replacement)
-            self._index.train(sample)  # type: ignore[reportGeneralTypeIssues]
-        else:
-            self._index.train(data)  # type: ignore[reportGeneralTypeIssues]
+        self._index.train(data)  # type: ignore[reportGeneralTypeIssues]
 
         if self.parameters.add_data_on_fit:
             # data might be added directly on fit, or using the ``add`` method
