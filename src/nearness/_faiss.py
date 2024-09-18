@@ -50,17 +50,17 @@ class FaissNeighbors(NearestNeighbors):
     def fit(self, data: Float[NumpyArray, "n d"]) -> "FaissNeighbors":
         _, dim = data.shape
         self._index = self._create_index(dim)
-        self._index.train(data)  # type: ignore[reportGeneralTypeIssues]
+        self._index.train(data)  # type: ignore[reportCallIssue]
 
         if self.parameters.add_data_on_fit:
             # data might be added directly on fit, or using the ``add`` method
-            self._index.add(data)  # type: ignore[reportGeneralTypeIssues]
+            self._index.add(data)  # type: ignore[reportCallIssue]
 
         return self
 
     @typecheck
     def add(self, data: Float[NumpyArray, "n d"]) -> "FaissNeighbors":
-        self._index.add(data)  # type: ignore[reportGeneralTypeIssues]
+        self._index.add(data)  # type: ignore[reportCallIssue]
         return self
 
     def query(
@@ -76,7 +76,7 @@ class FaissNeighbors(NearestNeighbors):
         points: Float[NumpyArray, "m d"],
         n_neighbors: int,
     ) -> tuple[Int64[NumpyArray, "m {n_neighbors}"], Float32[NumpyArray, "m {n_neighbors}"]]:
-        dist, idx = self._index.search(points, n_neighbors)  # type: ignore[reportGeneralTypeIssues]
+        dist, idx = self._index.search(points, n_neighbors)  # type: ignore[reportCallIssue]
         return idx, dist
 
     def _create_index(self, dim: int) -> faiss.Index:

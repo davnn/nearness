@@ -46,8 +46,8 @@ class NearestNeighborsMeta(ABCMeta):
         """Check the signature of ``__init__`` to ensure keyword-only arguments."""
         if "__init__" in attrs:
             parameters = inspect.signature(attrs["__init__"]).parameters
-            for name, parameter in parameters.items():
-                if name != "self" and (kind := parameter.kind) is not inspect.Parameter.KEYWORD_ONLY:
+            for param_name, parameter in parameters.items():
+                if param_name != "self" and (kind := parameter.kind) is not inspect.Parameter.KEYWORD_ONLY:
                     msg = (
                         "Only keyword-only arguments are allowed for classes inheriting from 'nearness."
                         f"NearestNeighbors', but found parameter '{parameter}' of kind '{kind}'."
@@ -89,9 +89,9 @@ class NearestNeighborsMeta(ABCMeta):
         # now we set all the relevant attributes on the ``instance``, as they should not be class-bound.
         # order is important here as ``_wrap_fit_method`` and ``_wrap_check_method`` depend on the set attributes
         obj = type.__call__(cls, **kwargs)
-        obj._parameters_, obj._config_ = cls._parameters_, cls._config_  # noqa: SLF001
+        obj._parameters_, obj._config_ = cls._parameters_, cls._config_
         # make sure that the wrapped methods are in sync when the config is changed after class instantiation
-        obj._config_.register_callback(  # noqa: SLF001
+        obj._config_.register_callback(
             "methods_require_fit",
             partial(cls._check_callback, obj=obj),
         )
@@ -144,7 +144,7 @@ class NearestNeighborsMeta(ABCMeta):
         """
         logger.debug("Starting to wrap methods to enable fit checking.")
         available_attributes = dir(obj)
-        methods_to_wrap = obj._config_.methods_require_fit  # noqa: SLF001
+        methods_to_wrap = obj._config_.methods_require_fit
         for attribute_name in available_attributes:
             attribute = getattr(obj, attribute_name)
             has_check = hasattr(attribute, "__check__")
@@ -186,7 +186,7 @@ class NearestNeighborsMeta(ABCMeta):
         is set in ``fit``, but unsafe when ``__fitted__`` is manually set to ``False`` after ``fit``.
         """
         logger.debug("Starting to unwrap all fit checking methods.")
-        for method_name in obj._config_.methods_require_fit:  # noqa: SLF001
+        for method_name in obj._config_.methods_require_fit:
             # we set an __requires_fit__ attribute on the wrapper, because using ``__wrapped__`` alone is not
             # safe (methods also use ``__wrapped__`` starting with Python 3.10)
             if hasattr(obj, method_name) and hasattr(method := getattr(obj, method_name), "__check__"):
