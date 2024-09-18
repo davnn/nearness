@@ -74,9 +74,9 @@ class ScipyNeighbors(NearestNeighbors):
         points: Float[NumpyArray, "m d"],
         n_neighbors: int,
     ) -> tuple[Int64[NumpyArray, "m {n_neighbors}"], Float[NumpyArray, "m {n_neighbors}"]]:
-        distance = cdist(
+        distance = cdist(  # type: ignore[reportCallIssue]
             points,
-            self._data,  # type: ignore[reportGeneralTypeIssues]
+            self._data,  # type: ignore[reportArgumentType]
             metric=self.parameters.metric,
             **self.parameters.metric_args,
         )

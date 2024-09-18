@@ -95,5 +95,5 @@ class AutoFaissNeighbors(NearestNeighbors):
         points: Float[NumpyArray, "m d"],
         n_neighbors: int,
     ) -> tuple[Int64[NumpyArray, "m {n_neighbors}"], Float32[NumpyArray, "m {n_neighbors}"]]:
-        dist, idx = self._index.search(points, n_neighbors)  # type: ignore[reportGeneralTypeIssues]
+        dist, idx = self._index.search(points, n_neighbors)  # type: ignore[reportCallIssue]
         return idx, dist
