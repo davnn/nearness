@@ -14,7 +14,7 @@
 *nearness* is a unified interface for (approximate) nearest neighbors search.
 
 Using ``pip install nearness`` only installs the interface and does not add any concrete nearest
-neighbors search implementation. The following implementations are available currently:
+neighbors search implementation. The following implementations are available:
 
 - [Annoy](https://github.com/spotify/annoy) exposes ``AnnoyNeighbors``
 - [AutoFaiss](https://github.com/criteo/autofaiss) exposes ``AutoFaissNeighbors``
@@ -27,6 +27,7 @@ neighbors search implementation. The following implementations are available cur
 - [SciPy](https://github.com/scipy/scipy) exposes ``ScipyNeighbors``
 - [scikit-learn](https://github.com/scikit-learn/scikit-learn) exposes ``SklearnNeighbors``
 - [PyTorch](https://github.com/pytorch/pytorch) exposes ``TorchNeighbors``
+- [Usearch](https://github.com/unum-cloud/usearch) exposes ``UsearchNeighbors``
 
 Installing one of the above packages exposes the corresponding nearest neighbors implementation. For example,
 ``nearness.FaissNeighbors`` is available if [Faiss](https://github.com/facebookresearch/faiss) is installed.
@@ -46,12 +47,12 @@ def fit(data: np.ndarray) -> Self:
 
 
 def query(point: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]:
-    """Search ``n_neighbors`` for a single point, returning the indices and distances."""
+    """Given a vector ``point``, search its ``n_neighbors``, returning the indices and distances."""
     ...
 
 
 def query_batch(points: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]:
-    """Search ``n_neighbors`` for a batch of points, returning the indices and distances."""
+    """Given a matrix ``points``, search their ``n_neighbors`` returning the indices and distances."""
     ...
 
 
@@ -117,12 +118,16 @@ kdtree_model.query(X_test[0], n_neighbors=5)
 ### Algorithm Implementation
 
 To define your own ``NearestNeighbors`` algorithm it is only necessary to implement above specified ``fit`` and
-``query`` methods. By default, ``query_batch`` uses a joblib to process a batch of queries in a threadpool, but most of
-the time you'd want to implement ``query_batch`` on your own for improved efficiency.
+``query`` methods. By default, ``query_batch`` uses [joblib](https://github.com/joblib/joblib) to process a batch of
+queries in a threadpool, but most of the time you'd want to implement ``query_batch`` on your own for improved
+efficiency.
 
 The following example illustrates the concepts of ``config`` and ``parameters``.
 
 ```python
+import numpy as np
+from nearness import NearestNeighbors
+
 class MyNearestNeighbors(NearestNeighbors):
     # only keyword-only arguments are allowed for subclasses of ``NearestNeighbors``.
     def __init__(self, *, a: int = 0):

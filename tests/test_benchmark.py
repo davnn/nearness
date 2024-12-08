@@ -13,14 +13,15 @@ data = SyntheticDataset(
 
 # we only benchmark brute-force algorithms for now
 candidates = {
-    "faiss-brute": lambda: FaissNeighbors(index_or_factory="Flat"),
-    "hnsw-brute": lambda: HNSWNeighbors(metric="l2", n_threads=-1, use_bruteforce=True),
+    "faiss": lambda: FaissNeighbors(index="Flat"),
+    "hnsw": lambda: HNSWNeighbors(metric="l2", n_threads=-1, use_bruteforce=True),
     "jax": lambda: JaxNeighbors(compute_mode="use_mm_for_euclid_dist", approximate_recall_target=0.9),
     "numpy": lambda: NumpyNeighbors(metric="minkowski", p=2, compute_mode="use_mm_for_euclid_dist"),
-    "scann-brute": lambda: ScannNeighbors(search_parallel=True, use_bruteforce=True, use_tree=False, use_reorder=False),
+    "scann": lambda: ScannNeighbors(search_parallel=True, use_bruteforce=True, use_tree=False, use_reorder=False),
     "scipy": lambda: ScipyNeighbors(metric="euclidean"),
     "sklearn": lambda: SklearnNeighbors(metric="euclidean", n_jobs=-1),
     "torch": lambda: TorchNeighbors(metric="minkowski", p=2, compute_mode="use_mm_for_euclid_dist"),
+    "usearch": lambda: UsearchNeighbors(exact_search=True),
 }
 candidates = [pytest_param_if_value_available(k, v) for k, v in candidates.items()]
 
