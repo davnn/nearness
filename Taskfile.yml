@@ -29,7 +29,7 @@ tasks:
         cmd: poetry update --with dev
 
     poetry-update-dev:
-        cmd: poetry add pytest@latest pytest-html@latest hypothesis@latest coverage@latest pytest-cov@latest pytest-benchmark@latest coverage-badge@latest ruff@latest pre-commit@latest black@latest pyright@latest bandit@latest safety@latest -G dev
+        cmd: poetry add notebook@latest pytest@latest pytest-html@latest hypothesis@latest coverage@latest pytest-cov@latest pytest-benchmark@latest coverage-badge@latest ruff@latest pre-commit@latest black@latest pyright@latest bandit@latest safety@latest -G dev
 
     poetry-use:
         cmds:

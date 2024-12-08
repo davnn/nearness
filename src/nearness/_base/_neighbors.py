@@ -21,8 +21,8 @@ from ._experimental import experimental
 logger = getLogger(__name__)
 
 __all__ = [
-    "NearestNeighbors",
     "InvalidSignatureError",
+    "NearestNeighbors",
 ]
 
 
