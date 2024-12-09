@@ -1,7 +1,4 @@
-import os
-import tempfile
 from pathlib import Path
-from uuid import uuid4
 
 import numpy as np
 from annoy import AnnoyIndex
@@ -9,8 +6,7 @@ from safecheck import Float, Int64, NumpyArray, Real, typecheck
 from typing_extensions import Any, Iterable, Literal, overload
 
 from ._base import NearestNeighbors
-
-IS_WINDOWS = os.name == "nt"
+from ._base._helpers import load_index_from_temp_file, save_index_to_temp_file
 
 __all__ = [
     "AnnoyNeighbors",
@@ -37,8 +33,13 @@ class AnnoyNeighbors(NearestNeighbors):
         super().__init__()
         self._index: AnnoyIndex | None = None
 
-        # mmap the raw annoy index
+        # mmap the raw annoy index if ``load_index_path`` is given
         if (path := self.parameters.load_index_path) is not None:
+            # raise an exception if ``load_index_dim`` is not given
+            if self.parameters.load_index_dim is None:
+                msg = f"Cannot load index from path '{path}' if 'load_index_dim' is None."
+                raise AssertionError(msg)
+
             index = AnnoyIndex(self.parameters.load_index_dim, self.parameters.metric)
             index.load(str(path))
             self._index = index
@@ -100,26 +101,11 @@ class AnnoyNeighbors(NearestNeighbors):
         if self._index is not None:
             index_bytes = state.pop("_index")
             self._index = AnnoyIndex(self.parameters.load_index_dim, self.parameters.metric)
-            # cannot delete the file on windows, ``delete_on_close`` is only available with Python >= 3.12
-            with tempfile.NamedTemporaryFile("wb", delete=not IS_WINDOWS) as file:
-                file.write(index_bytes)
-                file.flush()  # otherwise errors with 'Inappropriate ioctl for device'
-
-                # it's not allowed to re-open the file on windows
-                # https://stackoverflow.com/questions/23212435/permission-denied-to-write-to-my-temporary-file
-                if IS_WINDOWS:
-                    file.close()
-
-                # open the file and load the index
-                self._index.load(file.name, prefault=self.parameters.prefault)
+            load_index_from_temp_file(index_bytes, load_fn=self._index.load, prefault=self.parameters.prefault)
 
     def __getstate__(self) -> dict[str, Any]:
         """Save the index to a temporary file and store the bytes of the file."""
         state = super().__getstate__()
         if self._index is not None:
-            # there might be cleanup errors in multiprocessing setting on windows
-            with tempfile.TemporaryDirectory(ignore_cleanup_errors=IS_WINDOWS) as tmp_dir:
-                file_path = Path(tmp_dir) / uuid4().hex
-                self._index.save(str(file_path), prefault=self.parameters.prefault)
-                state["_index"] = file_path.read_bytes()
+            state["_index"] = save_index_to_temp_file(self._index.save, prefault=self.parameters.prefault)
         return state

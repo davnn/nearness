@@ -2,8 +2,8 @@ import warnings
 from functools import wraps
 
 __all__ = [
-    "experimental",
     "ExperimentalWarning",
+    "experimental",
 ]
 
 from typing_extensions import Any, Callable

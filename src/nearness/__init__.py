@@ -17,9 +17,9 @@ algorithm. For example, if you have installed ``nearness`` and ``numpy``, the al
 from ._base import ExperimentalWarning, NearestNeighbors, config
 
 __all__ = [
+    "ExperimentalWarning",
     "NearestNeighbors",
     "config",
-    "ExperimentalWarning",
 ]
 
 
@@ -48,9 +48,9 @@ except ImportError:  # pragma: no cover
     ...
 
 try:
-    from ._faiss import FaissNeighbors
+    from ._faiss import FaissIndex, FaissNeighbors
 
-    __all__ += ["FaissNeighbors"]
+    __all__ += ["FaissIndex", "FaissNeighbors"]
 except ImportError:  # pragma: no cover
     ...
 
@@ -100,5 +100,12 @@ try:
     from ._torch import TorchNeighbors
 
     __all__ += ["TorchNeighbors"]
+except ImportError:  # pragma: no cover
+    ...
+
+try:
+    from ._usearch import UsearchIndex, UsearchNeighbors
+
+    __all__ += ["UsearchIndex", "UsearchNeighbors"]
 except ImportError:  # pragma: no cover
     ...

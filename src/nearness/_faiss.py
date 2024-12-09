@@ -1,13 +1,19 @@
 import faiss
 from safecheck import Float, Float32, Int64, NumpyArray, typecheck
-from typing_extensions import Protocol, runtime_checkable
+from typing_extensions import Any, TypeVar
 
 from ._base import NearestNeighbors
+from ._base._helpers import IndexWrapper
+
+__all__ = ["FaissIndex", "FaissNeighbors"]
+
+T = TypeVar("T", bound=type[faiss.Index])
 
 
-@runtime_checkable
-class FaissIndexFactory(Protocol):
-    def __call__(self, dim: int) -> faiss.Index: ...
+class FaissIndex(IndexWrapper[T]):
+    def __init__(self, index: T, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.index = index
 
 
 class FaissNeighbors(NearestNeighbors):
@@ -39,7 +45,7 @@ class FaissNeighbors(NearestNeighbors):
     def __init__(
         self,
         *,
-        index_or_factory: str | FaissIndexFactory | faiss.Index = "Flat",
+        index: str | FaissIndex | faiss.Index = "Flat",
         add_data_on_fit: bool = True,
     ) -> None:
         super().__init__()
@@ -80,7 +86,7 @@ class FaissNeighbors(NearestNeighbors):
         return idx, dist
 
     def _create_index(self, dim: int) -> faiss.Index:
-        index = self.parameters.index_or_factory
+        index = self.parameters.index
         if isinstance(index, str):
             # if the index is a string, we treat it as an index factory
             return faiss.index_factory(dim, index)

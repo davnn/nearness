@@ -48,8 +48,9 @@ for example, dependencies with GPU-support.
 ## Install dependencies
 
 We use [`poetry`](https://github.com/python-poetry/poetry) to manage the dependencies. With an active poetry env,
-run `task install` to install all dependencies into environment. After the dependencies are installed, run
+run `task poetry-install` to install all dependencies into environment. After the dependencies are installed, run
 `task pre-commit-install` to add the [pre-commit](https://pre-commit.com/) hooks.
+Using ``task poetry-update-dev`` updates all development dependencies to their latest version and updates the lock file.
 
 ## Other help
 

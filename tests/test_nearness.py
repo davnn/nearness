@@ -41,7 +41,8 @@ class Data:
 candidates_original = {
     # comparing two equal models might seem unnecessary, but some tests are only performed on the ``implementation``
     "sklearn": lambda: Candidate(
-        implementation=SklearnNeighbors(metric="minkowski", p=2), reference=SklearnNeighbors(metric="minkowski", p=2)
+        implementation=SklearnNeighbors(metric="minkowski", p=2),
+        reference=SklearnNeighbors(metric="minkowski", p=2),
     ),
     "numpy": lambda: Candidate(
         implementation=NumpyNeighbors(metric="minkowski", p=2, compute_mode="donot_use_mm_for_euclid_dist"),
@@ -58,7 +59,8 @@ candidates_original = {
         reference=SklearnNeighbors(metric="minkowski", p=2),
     ),
     "hnsw-brute": lambda: Candidate(
-        implementation=HNSWNeighbors(metric="l2", use_bruteforce=True), reference=SklearnNeighbors(metric="sqeuclidean")
+        implementation=HNSWNeighbors(metric="l2", use_bruteforce=True),
+        reference=SklearnNeighbors(metric="sqeuclidean"),
     ),
     "hnsw": lambda: Candidate(
         implementation=HNSWNeighbors(metric="l2", n_index_neighbors=32, n_search_neighbors=32, n_links=32),
@@ -71,7 +73,7 @@ candidates_original = {
         implementation=AutoFaissNeighbors(metric_type="l2"), reference=SklearnNeighbors(metric="sqeuclidean")
     ),
     "faiss": lambda: Candidate(
-        implementation=FaissNeighbors(index_or_factory="Flat"), reference=SklearnNeighbors(metric="sqeuclidean")
+        implementation=FaissNeighbors(index="Flat"), reference=SklearnNeighbors(metric="sqeuclidean")
     ),
     "scann": lambda: Candidate(
         implementation=ScannNeighbors(use_bruteforce=True, use_tree=False, use_reorder=False),
@@ -80,6 +82,10 @@ candidates_original = {
     "jax": lambda: Candidate(
         implementation=JaxNeighbors(compute_mode="donot_use_mm_for_euclid_dist"),
         reference=SklearnNeighbors(metric="euclidean"),
+    ),
+    "usearch": lambda: Candidate(
+        implementation=UsearchNeighbors(index=UsearchIndex(metric="l2sq", dtype="f64"), exact_search=True),
+        reference=SklearnNeighbors(metric="sqeuclidean"),
     ),
 }
 
@@ -256,7 +262,10 @@ def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
     save_path = tmp_path / uuid4().hex
 
     if key == "hnsw-brute":
-        pytest.skip("Saving of HSNW index with use_bruteforce=True is not possible currently.")
+        pytest.skip(
+            "Saving of HSNW index with use_bruteforce=True is not possible, have a look at "
+            "https://github.com/nmslib/hnswlib/issues/605 for more information."
+        )
 
     data, n_neighbors = data_and_neighbors
     saved_model = candidate.implementation.fit(data.fit)
@@ -302,14 +311,45 @@ def test_annoy_save_load_identity(data_and_neighbors, tmp_path):
     assert approx_equal(dist_save, dist_disk, dist_load_save, dist_load_disk)
 
 
+@skip_if_missing("usearch")
+@hypothesis.given(data_and_neighbors=neighbors_strategy())
+@hypothesis.settings(suppress_health_check=[hypothesis.HealthCheck.function_scoped_fixture])
+def test_usearch_save_load_identity(data_and_neighbors, tmp_path):
+    data, n_neighbors = data_and_neighbors
+    _, n_dim = data.fit.shape
+
+    # build models and save
+    run_id = uuid4().hex
+    save_path = tmp_path / f"{run_id}-save.usearch"
+    view_path = tmp_path / f"{run_id}-view.usearch"
+
+    params = {"index": UsearchIndex(dtype="f64"), "exact_search": True}
+    save_model = UsearchNeighbors(save_index_path=save_path, **params)
+    save_model.fit(data.fit)
+    save_model_view = UsearchNeighbors(save_index_path=view_path, map_file_index=True, **params)
+    save_model_view.fit(data.fit)
+    load_model = UsearchNeighbors(load_index_path=save_path, **params)  # available after save model is fit
+    load_model_view = UsearchNeighbors(load_index_path=view_path, map_file_index=True, **params)
+
+    idx_save, dist_save = save_model.query_batch(data.batch, n_neighbors=n_neighbors)
+    idx_load, dist_load = load_model.query_batch(data.batch, n_neighbors=n_neighbors)
+    idx_save_view, dist_save_view = save_model_view.query_batch(data.batch, n_neighbors=n_neighbors)
+    idx_load_view, dist_load_view = load_model_view.query_batch(data.batch, n_neighbors=n_neighbors)
+
+    # save models equal load models in memory and out of memory
+    assert array_equal(idx_save, idx_load, idx_save_view, idx_load_view)
+    assert approx_equal(dist_save, dist_load, dist_save_view, dist_load_view)
+
+
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 def test_faiss_index_creation(data_and_neighbors):
     data, n_neighbors = data_and_neighbors
-    model_str = FaissNeighbors(index_or_factory="Flat")
+    _, dim = data.fit.shape
+    model_str = FaissNeighbors(index="Flat")
     model_str.fit(data.fit)
-    model_fun = FaissNeighbors(index_or_factory=lambda d: faiss.IndexFlat(d))
+    model_fun = FaissNeighbors(index=FaissIndex(faiss.IndexFlat))
     model_fun.fit(data.fit)
-    model_raw = FaissNeighbors(index_or_factory=faiss.IndexFlat)
+    model_raw = FaissNeighbors(index=faiss.IndexFlat(dim))
     model_raw.fit(data.fit)
 
     idx_str, dist_str = model_str.query(data.query, n_neighbors)
@@ -318,6 +358,25 @@ def test_faiss_index_creation(data_and_neighbors):
 
     assert array_equal(idx_str, idx_fun, idx_raw)
     assert approx_equal(dist_str, dist_fun, dist_raw)
+
+
+@skip_if_missing("usearch")
+@hypothesis.given(data_and_neighbors=neighbors_strategy())
+def test_usearch_index_creation(data_and_neighbors):
+    from usearch.index import Index
+
+    data, n_neighbors = data_and_neighbors
+    _, dim = data.fit.shape
+    model_fun = UsearchNeighbors(index=UsearchIndex(dtype="f64"), exact_search=True)
+    model_fun.fit(data.fit)
+    model_raw = UsearchNeighbors(index=Index(ndim=dim, dtype="f64"), exact_search=True)
+    model_raw.fit(data.fit)
+
+    idx_fun, dist_fun = model_fun.query(data.query, n_neighbors)
+    idx_raw, dist_raw = model_raw.query(data.query, n_neighbors)
+
+    assert array_equal(idx_fun, idx_raw)
+    assert approx_equal(dist_fun, dist_raw)
 
 
 @skip_if_missing("torch")
