@@ -16,7 +16,9 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ ubuntu-latest, windows-latest, macos-latest ]
+                # # macos-latest fails with a segfault for usearch, see issue:
+                # https://github.com/unum-cloud/usearch/issues/540
+                os: [ ubuntu-latest, windows-latest ]
                 python: [ "3.10" ]
         uses: ./.github/workflows/setup.yml
         with:

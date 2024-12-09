@@ -1,5 +1,6 @@
 import os
 import tempfile
+import warnings
 from pathlib import Path
 from uuid import uuid4
 
@@ -70,5 +71,9 @@ def load_index_from_temp_file(index_bytes: bytes, load_fn: Callable[..., Any], *
 
         # manually delete the file on windows
         if IS_WINDOWS:
-            file.close()
-            Path(file.name).unlink(missing_ok=True)
+            try:
+                file.close()
+                Path(file.name).unlink(missing_ok=True)
+            except PermissionError:
+                msg = f"Could not delete file '{file.name}', the file might be used by another process."
+                warnings.warn(msg, stacklevel=1)
