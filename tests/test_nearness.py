@@ -322,14 +322,14 @@ def test_usearch_save_load_identity(data_and_neighbors, tmp_path):
     run_id = uuid4().hex
     save_path = tmp_path / f"{run_id}-save.usearch"
     view_path = tmp_path / f"{run_id}-view.usearch"
-    index = UsearchIndex(dtype="f64")
 
-    save_model = UsearchNeighbors(index=index, save_index_path=save_path)
+    params = {"index": UsearchIndex(dtype="f64"), "exact_search": True}
+    save_model = UsearchNeighbors(save_index_path=save_path, **params)
     save_model.fit(data.fit)
-    save_model_view = UsearchNeighbors(index=index, save_index_path=view_path, map_file_index=True)
+    save_model_view = UsearchNeighbors(save_index_path=view_path, map_file_index=True, **params)
     save_model_view.fit(data.fit)
-    load_model = UsearchNeighbors(index=index, load_index_path=save_path)  # available after save model is fit
-    load_model_view = UsearchNeighbors(index=index, load_index_path=view_path, map_file_index=True)
+    load_model = UsearchNeighbors(load_index_path=save_path, **params)  # available after save model is fit
+    load_model_view = UsearchNeighbors(load_index_path=view_path, map_file_index=True, **params)
 
     idx_save, dist_save = save_model.query_batch(data.batch, n_neighbors=n_neighbors)
     idx_load, dist_load = load_model.query_batch(data.batch, n_neighbors=n_neighbors)
