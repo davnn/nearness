@@ -42,8 +42,7 @@ environment with `poetry env info`. Once the poetry setup is complete, you are r
 with `task poetry-install`.
 
 Note that Conda, Mamba or Micromamba is not necessary, you can use a tool of your choice to manage your Python
-environment. One benefit of using Conda is that we can override packages that are not easy to install with `pip`,
-for example, dependencies with GPU-support.
+environment. One benefit of using Conda is that we can override packages that are not easy to install with `pip`.
 
 ## Install dependencies
 

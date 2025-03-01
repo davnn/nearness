@@ -14,7 +14,7 @@ T = TypeVar("T")  # Generic type for index wrapper
 
 
 class IndexWrapper(Generic[T]):
-    """A general purpose generic wrapper around indexing structures that require values observed from the data.
+    """A general purpose wrapper around indexing structures that require values observed from the data.
 
     For example, some indexing structures require an argument ``dim`` for the data dimensionality of the index,
     which might not be known at class instantiation time, but can automatically be inferred once data is available.
