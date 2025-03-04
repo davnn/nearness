@@ -59,6 +59,13 @@ class JaxNeighbors(NearestNeighbors):
         compute_mode: compute_modes = "use_mm_for_euclid_dist",
         approximate_recall_target: float = 0.95,
     ) -> None:
+        """Instantiate Jax nearest neighbors.
+
+        :param metric: Only "minkowski" is supported currently.
+        :param p: Parameter that defines the specific p-norm used.
+        :param compute_mode: Use matrix multiple when ``p=2`` and mode is "use_mm_for_euclid_dist".
+        :param approximate_recall_target: Recall target for nearest neighbors sorting.
+        """
         super().__init__()
         # to be defined in ``fit``
         self._data: Float[JaxArray, "n d"] | None = None

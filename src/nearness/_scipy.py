@@ -48,6 +48,11 @@ class ScipyNeighbors(NearestNeighbors):
         metric: available_metrics = "euclidean",
         metric_args: MetricArgs | None = None,
     ) -> None:
+        """Instantiate Scipy nearest neighbors.
+
+        :param metric: One of the metrics available in ``scipy.cdist``.
+        :param metric_args: Dictionary of parameters used for the chosen metric.
+        """
         super().__init__()
         if metric_args is None:
             self.parameters.metric_args = {}

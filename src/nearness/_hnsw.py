@@ -21,8 +21,17 @@ class HNSWNeighbors(NearestNeighbors):
         n_threads: int = -1,
         random_seed: int = 0,
         use_bruteforce: bool = False,
-        load_dim: int | None = None,
     ) -> None:
+        """Instantiate HNSW nearest neighbors.
+
+        :param metric: One of ["l2", "ip", "cosine"].
+        :param n_index_neighbors: Size of the dynamic neighbors candidate list during index construction.
+        :param n_search_neighbors: Size of the dynamic neighbors candidate list during index search.
+        :param n_links: Number of connections per node in the graph. Higher values improve accuracy but use more memory.
+        :param n_threads: Number of threads to use during index search.
+        :param random_seed: Seed for random number generation, ensuring reproducibility across runs.
+        :param use_bruteforce: Skip index creation and use bruteforce search over all items instead.
+        """
         super().__init__()
         self._index_constructor = BFIndex if use_bruteforce else Index
         self._model = None

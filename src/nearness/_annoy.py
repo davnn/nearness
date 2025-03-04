@@ -22,7 +22,7 @@ class AnnoyNeighbors(NearestNeighbors):
         *,
         metric: available_metrics = "euclidean",
         n_trees: int = 32,
-        n_search_neighbors: int = 128,
+        n_search_neighbors: int | None = None,
         random_seed: int | None = None,
         disk_build_path: str | Path | None = None,
         save_index_path: str | Path | None = None,
@@ -30,6 +30,18 @@ class AnnoyNeighbors(NearestNeighbors):
         load_index_dim: int | None = None,
         prefault: bool = False,
     ) -> None:
+        """Instantiate annoy nearest neighbors.
+
+        :param metric: One of ["angular", "euclidean", "manhattan", "hamming", "dot"]
+        :param n_trees: Builds a forest of ``n_trees`` trees. More trees gives higher precision when querying.
+        :param n_search_neighbors: Inspect up to ``n_search_neighbors`` nodes, default is ``n_search_neighbors`` * n.
+        :param random_seed: Initialize the random number generator with the given seed.
+        :param disk_build_path: Build the index on disk given the ``disk_build_path``.
+        :param save_index_path: Save the index on disk after build given ``save_index_path``.
+        :param load_index_path: Loads (mmaps) an index from disk given ``load_index_path``, requires ``load_index_dim``.
+        :param load_index_dim: Specify the dimension for a loaded index.
+        :param prefault: If prefault is set to True, it will pre-read the entire file into memory (mmap MAP_POPULATE).
+        """
         super().__init__()
         self._index: AnnoyIndex | None = None
 

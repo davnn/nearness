@@ -47,6 +47,24 @@ class UsearchNeighbors(NearestNeighbors):
         map_file_index: bool = False,
         add_data_on_fit: bool = True,
     ) -> None:
+        """Instantiate Usearch nearest neighbors.
+
+        :param index: A UsearchIndex wrapped index or a usearch.Index.
+        :param exact_search: Bypass index and use bruteforce exact search.
+        :param copy_data: Should the index store a copy of vectors.
+        :param threads_fit: Optimal number of cores to use for index creation.
+        :param threads_search: Optimal number of cores to use for index search.
+        :param log_fit: Whether to print the progress bar on index creation.
+        :param log_search: Whether to print the progress bar on index search.
+        :param progress_fit: Callback to report stats of the index creation progress.
+        :param progress_search: Callback to report stats of the index search progress.
+        :param progress_save: Callback to report stats of the index save progress.
+        :param progress_load: Callback to report stats of the index load progress.
+        :param save_index_path: Save the index after index creation.
+        :param load_index_path: Load an existing index directly on ``__init__``.
+        :param map_file_index: Memory map an index after creation or on load.
+        :param add_data_on_fit: Add data to the index directly on index creation.
+        """
         super().__init__()
         # to be defined in ``fit``
         self._index: usearch.Index | None = None
