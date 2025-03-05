@@ -14,6 +14,8 @@ class SupportedFloat(AbstractDtype):
 
 
 class TorchNeighbors(NearestNeighbors):
+    """PyTorch-based exact nearest neighbors implementation."""
+
     available_metrics = Literal["minkowski"]
     compute_modes = Literal[
         "use_mm_for_euclid_dist",

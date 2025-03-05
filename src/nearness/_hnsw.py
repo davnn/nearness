@@ -6,7 +6,7 @@ from ._base import NearestNeighbors
 
 
 class HNSWNeighbors(NearestNeighbors):
-    """CPU-based nearest neighbors algorithm based on scikit-learn. Note: The distances and indices are sorted!."""
+    """Approximate nearest neighbors based on HNSWlib."""
 
     available_metrics = Literal["l2", "ip", "cosine"]
 

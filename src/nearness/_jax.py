@@ -45,7 +45,7 @@ def cdist_euclidean_mm(
 
 
 class JaxNeighbors(NearestNeighbors):
-    """CPU-based nearest neighbors algorithm based on scikit-learn. Note: The distances and indices are sorted!."""
+    """Jax-based exact nearest neighbors implementation with option for inexact neighbors sorting."""
 
     available_metrics = Literal["minkowski"]
     compute_modes = Literal["use_mm_for_euclid_dist", "donot_use_mm_for_euclid_dist"]

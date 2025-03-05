@@ -6,7 +6,7 @@ from ._base import NearestNeighbors
 
 
 class SklearnNeighbors(NearestNeighbors):
-    """CPU-based nearest neighbors algorithm based on scikit-learn. Note: The distances and indices are sorted!."""
+    """Scikit-Learn exact nearest neighbors implementation."""
 
     available_algorithms = Literal["auto", "brute", "ball_tree", "kd_tree"]
 

@@ -19,7 +19,7 @@ DEFAULT_INDEX = UsearchIndex(metric="l2sq")
 
 
 class UsearchNeighbors(NearestNeighbors):
-    """A wrapper around ``usearch.Index``.
+    """A simple wrapper around ``usearch.Index``.
 
     References
     ----------

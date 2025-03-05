@@ -7,7 +7,7 @@ from ._numpy import min_k
 
 
 class ScipyNeighbors(NearestNeighbors):
-    """CPU-based nearest neighbors algorithm based on scikit-learn. Note: The distances and indices are sorted!."""
+    """SciPy-based exact nearest neighbors implementation."""
 
     available_metrics = Literal[
         "braycurtis",

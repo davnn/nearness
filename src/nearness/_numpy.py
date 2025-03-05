@@ -55,7 +55,7 @@ def min_k(arr: Float[NumpyArray, "m n"], k: int) -> tuple[Int64[NumpyArray, "m {
 
 
 class NumpyNeighbors(NearestNeighbors):
-    """CPU-based nearest neighbors algorithm based on scikit-learn. Note: The distances and indices are sorted!."""
+    """Numpy-based exact nearest neighbors implementation."""
 
     available_metrics = Literal["minkowski"]
     compute_modes = Literal["use_mm_for_euclid_dist", "donot_use_mm_for_euclid_dist"]

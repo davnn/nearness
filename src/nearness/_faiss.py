@@ -17,7 +17,7 @@ class FaissIndex(IndexWrapper[T]):
 
 
 class FaissNeighbors(NearestNeighbors):
-    """A fairly simple wrapper around ``faiss.Index``.
+    """A simple wrapper around ``faiss.Index``.
 
     A Faiss index is built from any combination of the following.
 

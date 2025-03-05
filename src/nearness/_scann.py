@@ -1,5 +1,4 @@
 import tempfile
-from dataclasses import asdict
 from pathlib import Path
 
 import scann
@@ -142,6 +141,9 @@ class ScannNeighbors(NearestNeighbors):
         self.parameters.hashing_config = to_config(ScannHashingConfig, hashing_config)
         self.parameters.reorder_config = to_config(ScannReorderConfig, reorder_config)
         self.parameters.search_config = to_config(ScannSearchConfig, search_config)
+        # the c++ search functions only allow integer inputs using default values when -1 is given, this was previously
+        # transformed from None to -1 directly in the python wrapper, but is missing in 1.3.5 for ``searcher.search``.
+        self.parameters.search_config = {k: -1 if v is None else v for k, v in self.parameters.search_config.items()}
 
         # to be defined in ``fit``
         self._index = None
@@ -164,14 +166,14 @@ class ScannNeighbors(NearestNeighbors):
 
         # provide the tree config
         if self.parameters.use_tree:
-            searcher.tree(**asdict(parameters.tree_config))
+            searcher.tree(**parameters.tree_config)
 
         # provide the score config
-        getattr(searcher, score_method)(**asdict(score_config))
+        getattr(searcher, score_method)(**score_config)
 
         # provide the reorder config
         if self.parameters.use_reorder:
-            searcher.reorder(**asdict(parameters.reorder_config))
+            searcher.reorder(**parameters.reorder_config)
 
         self._index = searcher.build()
         return self
@@ -184,9 +186,9 @@ class ScannNeighbors(NearestNeighbors):
         idx, dist = self._index.search(
             point,
             final_num_neighbors=n_neighbors,
-            **asdict(self.parameters.search_config),
+            **self.parameters.search_config,
         )
-        return idx, dist
+        return idx, dist  # type: ignore[reportReturnType]
 
     def query_batch(
         self,
@@ -197,7 +199,7 @@ class ScannNeighbors(NearestNeighbors):
         idx, dist = getattr(self._index, search_method)(
             points,
             final_num_neighbors=n_neighbors,
-            **asdict(self.parameters.search_config),
+            **self.parameters.search_config,
         )
         return idx, dist
 
