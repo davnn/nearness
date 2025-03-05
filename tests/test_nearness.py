@@ -311,6 +311,42 @@ def test_annoy_save_load_identity(data_and_neighbors, tmp_path):
     assert approx_equal(dist_save, dist_disk, dist_load_save, dist_load_disk)
 
 
+@skip_if_missing("autofaiss")
+@hypothesis.given(data_and_neighbors=neighbors_strategy())
+@hypothesis.settings(suppress_health_check=[hypothesis.HealthCheck.function_scoped_fixture])
+def test_autofaiss_save_load_identity(data_and_neighbors, tmp_path):
+    data, n_neighbors = data_and_neighbors
+
+    # build index and save
+    run_id = uuid4().hex
+    index_path = str(tmp_path / f"{run_id}.index")
+    info_path = str(tmp_path / f"{run_id}.json")
+    save_model = AutoFaissNeighbors(
+        index_path=index_path, index_infos_path=info_path, save_on_disk=True, metric_type="l2"
+    )
+    save_model.fit(data.fit)
+
+    # load and mmap index
+    load_model = AutoFaissNeighbors(
+        index_path=index_path, index_infos_path=info_path, pre_load_index=True, metric_type="l2"
+    )
+    mmap_model = AutoFaissNeighbors(
+        index_path=index_path,
+        index_infos_path=info_path,
+        pre_load_index=True,
+        pre_load_using_mmap=True,
+        metric_type="l2",
+    )
+
+    idx_save, dist_save = save_model.query_batch(data.batch, n_neighbors=n_neighbors)
+    idx_load, dist_load = load_model.query_batch(data.batch, n_neighbors=n_neighbors)
+    idx_mmap, dist_mmap = mmap_model.query_batch(data.batch, n_neighbors=n_neighbors)
+
+    # save models equal load models in memory and out of memory
+    assert array_equal(idx_save, idx_load, idx_mmap)
+    assert approx_equal(dist_save, dist_load, dist_mmap)
+
+
 @skip_if_missing("usearch")
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
 @hypothesis.settings(suppress_health_check=[hypothesis.HealthCheck.function_scoped_fixture])

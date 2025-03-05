@@ -44,7 +44,7 @@ class AutoFaissNeighbors(NearestNeighbors):
     ) -> None:
         """Instantiate autofaiss nearest neighbors.
 
-        :param save_on_disk: Whether to save the index on disk, default is True.
+        :param save_on_disk: Whether to save the index on disk, default is False.
         :param pre_load_index: Pre-load the index directly on ``__init__``.
         :param pre_load_using_mmap: Use mmap to pre-load the index on ``__init__``.
         :param index_path: Destination path of the quantized model.
@@ -86,6 +86,7 @@ class AutoFaissNeighbors(NearestNeighbors):
         self._index, self._infos = build_index(
             data,
             save_on_disk=self.parameters.save_on_disk,
+            index_path=self.parameters.index_path,
             index_infos_path=self.parameters.index_infos_path,
             ids_path=self.parameters.ids_path,
             file_format=self.parameters.file_format,
