@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "nearness"
-version = "0.2.0"
+version = "0.2.1"
 description = "An easy-to-use interface for (approximate) nearest neighbors algorithms."
 readme = "README.md"
 authors = ["David Muhr <muhrdavid+github@gmail.com>"]
@@ -46,6 +46,8 @@ faiss-cpu = { version = "^1", optional = true }
 annoy = { version = "^1", optional = true }
 hnswlib = { version = "^0.8", optional = true }
 usearch = { version = "^2", optional = true }
+# ScaNN should be installed using --no-deps to prevent an installation of tensorflow, but this is not yet supported
+# by poetry, see: https://github.com/python-poetry/poetry/issues/3377
 scann = { version = "^1", optional = true, platform = "linux", markers = "python_version < '3.12'" }
 jax = { version = ">=0.4", source = "pypi", extras = ["cpu"], optional = true }
 torch = [
@@ -68,16 +70,16 @@ jax = ["jax"]
 usearch = ["usearch"]
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.3.4"
+pytest = "^8.3.5"
 pytest-html = "^4.1.1"
-hypothesis = "^6.127.3"
+hypothesis = "^6.127.6"
 coverage = "^7.6.12"
 pytest-cov = "^6.0.0"
 coverage-badge = "^1.1.2"
 ruff = "^0.9.9"
 pre-commit = "^4.1.0"
 black = "^25.1.0"
-pyright = "^1.1.395"
+pyright = "^1.1.396"
 bandit = "^1.8.3"
 safety = "^3.3.1"
 notebook = "^7.3.2"
@@ -167,7 +169,7 @@ reportUnnecessaryCast = true
 reportUnnecessaryComparison = true
 reportUnnecessaryContains = true
 reportUnnecessaryIsInstance = true
-reportUnnecessaryTypeIgnoreComment = true
+reportUnnecessaryTypeIgnoreComment = "warning"
 reportUnusedClass = true
 reportUnusedImport = true
 reportUnusedFunction = true
@@ -193,11 +195,11 @@ addopts = ["--strict-markers", "--tb=short"]
 filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
 
 [tool.coverage.run]
-source = ["tests"]
+source = ["src"]
 branch = true
 
 [tool.coverage.paths]
-source = ["src/nearness"]
+source = ["src"]
 
 [tool.coverage.report]
 show_missing = true
