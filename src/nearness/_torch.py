@@ -14,6 +14,8 @@ class SupportedFloat(AbstractDtype):
 
 
 class TorchNeighbors(NearestNeighbors):
+    """PyTorch-based exact nearest neighbors implementation."""
+
     available_metrics = Literal["minkowski"]
     compute_modes = Literal[
         "use_mm_for_euclid_dist",
@@ -31,6 +33,14 @@ class TorchNeighbors(NearestNeighbors):
         force_dtype: torch.dtype | None = None,
         force_device: torch.device | str | None = None,
     ) -> None:
+        """Instantiate Torch nearest neighbors.
+
+        :param metric: Only "minkowski" is supported currently.
+        :param p: Parameter that defines the specific p-norm used.
+        :param compute_mode: Use matrix multiple when ``p=2`` and mode is "use_mm_for_euclid_dist".
+        :param force_dtype: Ensure a specific dtype is used for search.
+        :param force_device: Ensure a specific device is used for search.
+        """
         super().__init__()
         # to be defined in ``fit``
         self._data: SupportedFloat[TorchArray, "n d"] | None = None
@@ -77,8 +87,4 @@ class TorchNeighbors(NearestNeighbors):
         points = torch.as_tensor(points, dtype=self._data.dtype, device=self._data.device)
         dist = torch.cdist(points, self._data, p=self.parameters.p, compute_mode=self.parameters.compute_mode)
         dist, idx = torch.topk(dist, k=n_neighbors, dim=1, largest=False)
-
-        if is_numpy:
-            return idx.cpu().numpy(), dist.cpu().numpy()
-
-        return idx, dist
+        return (idx.cpu().numpy(), dist.cpu().numpy()) if is_numpy else (idx, dist)

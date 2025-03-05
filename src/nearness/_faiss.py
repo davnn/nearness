@@ -17,7 +17,7 @@ class FaissIndex(IndexWrapper[T]):
 
 
 class FaissNeighbors(NearestNeighbors):
-    """A fairly simple wrapper around ``faiss.Index``.
+    """A simple wrapper around ``faiss.Index``.
 
     A Faiss index is built from any combination of the following.
 
@@ -48,6 +48,11 @@ class FaissNeighbors(NearestNeighbors):
         index: str | FaissIndex | faiss.Index = "Flat",
         add_data_on_fit: bool = True,
     ) -> None:
+        """Instantiate faiss nearest neighbors.
+
+        :param index: An index factory string, a FaissIndex wrapped index or a faiss.Index.
+        :param add_data_on_fit: Add the data used for index training to the learned index.
+        """
         super().__init__()
         # to be defined in ``fit``
         self._index: faiss.Index | None = None

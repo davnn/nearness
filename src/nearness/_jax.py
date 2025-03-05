@@ -45,7 +45,7 @@ def cdist_euclidean_mm(
 
 
 class JaxNeighbors(NearestNeighbors):
-    """CPU-based nearest neighbors algorithm based on scikit-learn. Note: The distances and indices are sorted!."""
+    """Jax-based exact nearest neighbors implementation with option for inexact neighbors sorting."""
 
     available_metrics = Literal["minkowski"]
     compute_modes = Literal["use_mm_for_euclid_dist", "donot_use_mm_for_euclid_dist"]
@@ -59,6 +59,13 @@ class JaxNeighbors(NearestNeighbors):
         compute_mode: compute_modes = "use_mm_for_euclid_dist",
         approximate_recall_target: float = 0.95,
     ) -> None:
+        """Instantiate Jax nearest neighbors.
+
+        :param metric: Only "minkowski" is supported currently.
+        :param p: Parameter that defines the specific p-norm used.
+        :param compute_mode: Use matrix multiple when ``p=2`` and mode is "use_mm_for_euclid_dist".
+        :param approximate_recall_target: Recall target for nearest neighbors sorting.
+        """
         super().__init__()
         # to be defined in ``fit``
         self._data: Float[JaxArray, "n d"] | None = None

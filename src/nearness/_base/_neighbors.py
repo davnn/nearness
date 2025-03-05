@@ -209,7 +209,7 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
 
     def __init__(self) -> None:
         super().__init__()
-        self.__fitted__ = False
+        self.__fitted__: bool = False
 
     @abstractmethod
     def fit(self, data: np.ndarray) -> Self:

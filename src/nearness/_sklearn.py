@@ -6,7 +6,7 @@ from ._base import NearestNeighbors
 
 
 class SklearnNeighbors(NearestNeighbors):
-    """CPU-based nearest neighbors algorithm based on scikit-learn. Note: The distances and indices are sorted!."""
+    """Scikit-Learn exact nearest neighbors implementation."""
 
     available_algorithms = Literal["auto", "brute", "ball_tree", "kd_tree"]
 
@@ -21,6 +21,15 @@ class SklearnNeighbors(NearestNeighbors):
         metric_params: dict[str, Any] | None = None,
         n_jobs: int | None = None,
     ) -> None:
+        """Instantiate Sklearn nearest neighbors.
+
+        :param algorithm: One of ["auto", "brute", "ball_tree", "kd_tree"].
+        :param leaf_size: Leaf size passed to BallTree or KDTree.
+        :param metric: One of the metrics listed in ``sklearn.metrics.pairwise.distance_metrics()``.
+        :param p: Parameter for the Minkowski metric that defines the specific p-norm used.
+        :param metric_params: Additional keyword arguments for the metric function.
+        :param n_jobs: The number of parallel jobs to run for neighbors search.
+        """
         super().__init__()
         # to be set in ``fit``
         self._model: None | SklearnNearestNeighbors = None
