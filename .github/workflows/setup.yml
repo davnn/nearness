@@ -61,7 +61,9 @@ jobs:
 
             -   name: Push
                 if: ${{ inputs.push && inputs.os == 'ubuntu-latest' && github.event_name == 'pull_request' }}
-                # Commit all changed files back to the repository
-                uses: stefanzweifel/git-auto-commit-action@v5
-                with:
-                    commit_message: ":white_check_mark: automated change [skip ci]"
+                run: |
+                  git config --global user.name "github-actions[bot]"
+                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
+                  git add .
+                  git commit -m ":white_check_mark: automated change [skip ci]" || echo "No changes to commit"
+                  git push origin HEAD:${{ github.head_ref }}
