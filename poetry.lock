@@ -1111,7 +1111,7 @@ description = "File-system specification"
 optional = true
 python-versions = ">=3.9"
 groups = ["main"]
-markers = "(extra == \"torch\" or extra == \"autofaiss\") and (sys_platform == \"darwin\" or sys_platform == \"win32\" or sys_platform == \"linux\") or sys_platform != \"darwin\" and sys_platform != \"win32\" and sys_platform != \"linux\" and extra == \"autofaiss\""
+markers = "(sys_platform == \"darwin\" or sys_platform == \"win32\" or sys_platform == \"linux\") and (extra == \"torch\" or extra == \"autofaiss\") or sys_platform != \"darwin\" and sys_platform != \"win32\" and sys_platform != \"linux\" and extra == \"autofaiss\""
 files = [
     {file = "fsspec-2025.3.2-py3-none-any.whl", hash = "sha256:2daf8dc3d1dfa65b6aa37748d112773a7a08416f6c70d96b264c96476ecaf711"},
     {file = "fsspec-2025.3.2.tar.gz", hash = "sha256:e52c77ef398680bbd6a98c0e628fbc469491282981209907bbc8aea76a04fdc6"},
@@ -1359,15 +1359,15 @@ zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "hypothesis"
-version = "6.130.10"
+version = "6.130.11"
 description = "A library for property-based testing"
 optional = false
 python-versions = ">=3.9"
 groups = ["dev"]
 markers = "sys_platform == \"darwin\" or sys_platform == \"win32\" or sys_platform == \"linux\" or sys_platform != \"darwin\" and sys_platform != \"win32\" and sys_platform != \"linux\""
 files = [
-    {file = "hypothesis-6.130.10-py3-none-any.whl", hash = "sha256:d6d754c03b1dd4d3a5801bd23b2d4f91b64f6fb209b599e1cbd6d234e498057d"},
-    {file = "hypothesis-6.130.10.tar.gz", hash = "sha256:d5f290b39af4ff3bc9eb60edccafd1baa31d1739b5de01980d2cddebdfc21ebc"},
+    {file = "hypothesis-6.130.11-py3-none-any.whl", hash = "sha256:fed6d0124b709ddda4ad7fc6b3fef4bda2b1046e368c43aee5ad1f4cdc9e5501"},
+    {file = "hypothesis-6.130.11.tar.gz", hash = "sha256:1224608887d0099c37091959ae2f7fea3e0354dd6085fcf62d6b77329d7b1efa"},
 ]
 
 [package.dependencies]
@@ -2048,7 +2048,6 @@ python-versions = "*"
 groups = ["main"]
 markers = "sys_platform == \"linux\" and extra == \"scann\""
 files = [
-    {file = "libclang-18.1.1-1-py2.py3-none-macosx_11_0_arm64.whl", hash = "sha256:0b2e143f0fac830156feb56f9231ff8338c20aecfe72b4ffe96f19e5a1dbb69a"},
     {file = "libclang-18.1.1-py2.py3-none-macosx_10_9_x86_64.whl", hash = "sha256:6f14c3f194704e5d09769108f03185fce7acaf1d1ae4bbb2f30a72c2400cb7c5"},
     {file = "libclang-18.1.1-py2.py3-none-macosx_11_0_arm64.whl", hash = "sha256:83ce5045d101b669ac38e6da8e58765f12da2d3aafb3b9b98d88b286a60964d8"},
     {file = "libclang-18.1.1-py2.py3-none-manylinux2010_x86_64.whl", hash = "sha256:c533091d8a3bbf7460a00cb6c1a71da93bffe148f172c7d03b1c31fbf8aa2a0b"},
@@ -2755,7 +2754,6 @@ python-versions = ">=3"
 groups = ["main"]
 markers = "(sys_platform == \"darwin\" or sys_platform == \"win32\") and extra == \"torch\" and platform_system == \"Linux\" and platform_machine == \"x86_64\""
 files = [
-    {file = "nvidia_nvjitlink_cu12-12.4.127-py3-none-manylinux2014_aarch64.whl", hash = "sha256:4abe7fef64914ccfa909bc2ba39739670ecc9e820c83ccc7a6ed414122599b83"},
     {file = "nvidia_nvjitlink_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl", hash = "sha256:06b3b9b25bf3f8af351d664978ca26a16d2c5127dbd53c0497e28d1fb9611d57"},
     {file = "nvidia_nvjitlink_cu12-12.4.127-py3-none-win_amd64.whl", hash = "sha256:fd9020c501d27d135f983c6d3e244b197a7ccad769e34df53a42e276b0e25fa1"},
 ]
@@ -5624,4 +5622,4 @@ usearch = ["usearch"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "ef7b15ab2edfbabc266acbdf37c9938bb48469ebb41d1f61e71dd42fd29a0fc2"
+content-hash = "6ecdf954a5037d4a6a27c5af84a4a0c6845c26f8e9151a9a120560b58657b608"
