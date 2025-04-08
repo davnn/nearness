@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "nearness"
-version = "0.2.2"
+version = "0.2.3"
 description = "An easy-to-use interface for (approximate) nearest neighbors algorithms."
 readme = "README.md"
 authors = ["David Muhr <muhrdavid+github@gmail.com>"]
@@ -73,7 +73,7 @@ usearch = ["usearch"]
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
 pytest-html = "^4.1.1"
-hypothesis = "^6.130.10"
+hypothesis = "^6.130.11"
 coverage = "^7.8.0"
 pytest-cov = "^6.1.1"
 coverage-badge = "^1.1.2"
@@ -193,15 +193,21 @@ reportMissingImports = false
 # Directories that are not visited by pytest collector:
 norecursedirs = ["hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
 addopts = ["--strict-markers", "--tb=short"]
-filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
+filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning", "ignore::nearness.ExperimentalWarning"]
 
 [tool.coverage.run]
-source = ["src"]
 branch = true
-
-[tool.coverage.paths]
-source = ["src"]
+parallel = true
 
 [tool.coverage.report]
 show_missing = true
-exclude_lines = ["pragma: no cover", "@overload", "@abstractmethod", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+exclude_also = [
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "@overload",
+    "if __name__ == .__main__.:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

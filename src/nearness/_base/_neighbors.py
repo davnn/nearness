@@ -253,13 +253,20 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
         self.is_fitted = self.__fitted__  # wrap or unwrap the check methods depending on ``__fitted__``
 
     def __getstate__(self) -> dict[str, Any]:
-        self.fit = (  # unwrap the fit method if wrapped
+        state = self.__dict__.copy()
+
+        # it is very important to modify the save state and not modify the methods, otherwise the
+        # methods would be modified in-place and the object would be invalid after ``__getstate__``.
+        for method in self.config.methods_require_fit:
+            if method in state:
+                state[method] = m.__wrapped__ if hasattr(m := state[method], "__check__") else m
+
+        state["fit"] = (  # unwrap the fit method if wrapped
             self.fit.__wrapped__  # type: ignore[reportFunctionMemberAccess]
             if hasattr(self.fit, "__fit__")
             else self.fit
         )
-        _unwrap_check_method(self)
-        state = self.__dict__.copy()
+
         parameter_fields = fields(self._parameters_)
         parameter_types = [(f.name, f.type) for f in parameter_fields]
         parameter_values = {f.name: getattr(self._parameters_, f.name) for f in parameter_fields}
@@ -325,6 +332,7 @@ def _wrap_fit_method(obj: "NearestNeighbors") -> None:
     1. Add a decorator to every ``fit`` method that sets ``is_fitted`` to ``True``.
     2. Set ``is_fitted`` on every ``fit``-like method and check for ``is_fitted`` everywhere.
     """
+    logger.debug("Wrapping fit method.")
     original_fit = obj.fit
 
     @wraps(original_fit)
