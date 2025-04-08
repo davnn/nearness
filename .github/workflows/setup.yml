@@ -24,6 +24,8 @@ jobs:
         runs-on: ${{ inputs.os }}
         steps:
             -   uses: actions/checkout@v4
+                with:
+                  fetch-depth: 0  # Ensures the full history is available for pull
 
             -   name: Install Task
                 uses: arduino/setup-task@v1
@@ -64,6 +66,8 @@ jobs:
                 run: |
                   git config --global user.name "github-actions[bot]"
                   git config --global user.email "github-actions[bot]@users.noreply.github.com"
+                  git fetch origin
+                  git rebase origin/${{ github.head_ref }} || git rebase --abort
                   git add .
                   git commit -m ":white_check_mark: automated change [skip ci]" || echo "No changes to commit"
                   git push origin HEAD:${{ github.head_ref }}
