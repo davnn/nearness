@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "nearness"
-version = "0.2.3"
+version = "0.2.2"
 description = "An easy-to-use interface for (approximate) nearest neighbors algorithms."
 readme = "README.md"
 authors = ["David Muhr <muhrdavid+github@gmail.com>"]
