@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "nearness"
-version = "0.2.1"
+version = "0.2.2"
 description = "An easy-to-use interface for (approximate) nearest neighbors algorithms."
 readme = "README.md"
 authors = ["David Muhr <muhrdavid+github@gmail.com>"]
@@ -25,6 +25,7 @@ classifiers = [
     "Intended Audience :: Education",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3 :: Only",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: POSIX",
@@ -35,7 +36,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-safecheck = ">=0.3,<0.5"
+safecheck = ">=0.3"
 joblib = "^1"
 typing-extensions = ">=4"
 numpy = { version = ">=1", optional = true }
@@ -48,7 +49,7 @@ hnswlib = { version = "^0.8", optional = true }
 usearch = { version = "^2", optional = true }
 # ScaNN should be installed using --no-deps to prevent an installation of tensorflow, but this is not yet supported
 # by poetry, see: https://github.com/python-poetry/poetry/issues/3377
-scann = { version = "^1", optional = true, platform = "linux", markers = "python_version < '3.12'" }
+scann = { version = "^1", optional = true, platform = "linux" }
 jax = { version = ">=0.4", source = "pypi", extras = ["cpu"], optional = true }
 torch = [
     { version = ">=1", platform = "darwin", source = "pypi", optional = true },
@@ -72,17 +73,17 @@ usearch = ["usearch"]
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
 pytest-html = "^4.1.1"
-hypothesis = "^6.127.6"
-coverage = "^7.6.12"
-pytest-cov = "^6.0.0"
+hypothesis = "^6.130.11"
+coverage = "^7.8.0"
+pytest-cov = "^6.1.1"
 coverage-badge = "^1.1.2"
-ruff = "^0.9.9"
-pre-commit = "^4.1.0"
+ruff = "^0.11.4"
+pre-commit = "^4.2.0"
 black = "^25.1.0"
-pyright = "^1.1.396"
+pyright = "^1.1.398"
 bandit = "^1.8.3"
 safety = "^3.3.1"
-notebook = "^7.3.2"
+notebook = "^7.3.3"
 pytest-benchmark = "^5.1.0"
 
 [[tool.poetry.source]]
@@ -192,15 +193,21 @@ reportMissingImports = false
 # Directories that are not visited by pytest collector:
 norecursedirs = ["hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
 addopts = ["--strict-markers", "--tb=short"]
-filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning"]
+filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning", "ignore::nearness.ExperimentalWarning"]
 
 [tool.coverage.run]
-source = ["src"]
 branch = true
-
-[tool.coverage.paths]
-source = ["src"]
+parallel = true
 
 [tool.coverage.report]
 show_missing = true
-exclude_lines = ["pragma: no cover", "@overload", "@abstractmethod", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+exclude_also = [
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "@overload",
+    "if __name__ == .__main__.:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

@@ -3,7 +3,7 @@
 
 
 import torch
-from safecheck import AbstractDtype, Int64, NumpyArray, TorchArray, typecheck
+from safecheck import AbstractDtype, Int64, NumpyArray, TorchArray, is_instance, typecheck
 from typing_extensions import Literal, overload
 
 from ._base import NearestNeighbors
@@ -83,7 +83,7 @@ class TorchNeighbors(NearestNeighbors):
     ) -> tuple[Int64[TorchArray, "m {n_neighbors}"], SupportedFloat[TorchArray, "m {n_neighbors}"]]: ...
 
     def query_batch(self, points, n_neighbors):
-        is_numpy = isinstance(points, NumpyArray)
+        is_numpy = is_instance(points, NumpyArray)
         points = torch.as_tensor(points, dtype=self._data.dtype, device=self._data.device)
         dist = torch.cdist(points, self._data, p=self.parameters.p, compute_mode=self.parameters.compute_mode)
         dist, idx = torch.topk(dist, k=n_neighbors, dim=1, largest=False)

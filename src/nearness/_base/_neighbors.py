@@ -77,6 +77,8 @@ class NearestNeighborsMeta(ABCMeta):
         # Set the default config, such that it can be manipulated in ``__init__``, and deepcopy the config such that
         # a manipulation of ``cls._config_`` does not manipulate the global ``config`` object.
         # We must set the attribute here before ``__call__``, because the config should be usable in ``__init__``.
+        # Setting the class attributes enable thread-local access to the config and parameters, which is later on
+        # bound to the object, it's a bit magical, but useful to manipulate the config and params in init.
         thread_local.config = deepcopy(config)
         cls._config_ = thread_local.config  # type: ignore[reportUninitializedInstanceVariable]
         logger.info("Determined config object as '%s'", cls._config_)
@@ -91,10 +93,7 @@ class NearestNeighborsMeta(ABCMeta):
         obj = type.__call__(cls, **kwargs)
         obj._parameters_, obj._config_ = cls._parameters_, cls._config_
         # make sure that the wrapped methods are in sync when the config is changed after class instantiation
-        obj._config_.register_callback(
-            "methods_require_fit",
-            partial(cls._check_callback, obj=obj),
-        )
+        obj._config_.register_callback("methods_require_fit", partial(_check_callback, obj=obj))
         if not hasattr(obj, "__fitted__"):
             msg = (
                 f"Instantiated {obj}, but missing the '__fitted__' attribute, which is automatically set to False in "
@@ -103,95 +102,18 @@ class NearestNeighborsMeta(ABCMeta):
             )
             warn(msg, stacklevel=1)
             obj.__fitted__ = False
+
+        # __fitted__ might be true if the index is pre-loaded in the ``__init__``.
         if not obj.__fitted__:
-            # __fitted__ might be true if the index is pre-loaded in the ``__init__``.
-            cls._wrap_check_method(obj)
-        cls._wrap_fit_method(obj)
+            _wrap_check_method(obj)
+
+        # always wrap the fit method of the object
+        _wrap_fit_method(obj)
+
+        # delete the temporary class variables
         del cls._parameters_
         del cls._config_
         return obj
-
-    def _check_callback(cls, _: Any, *, obj: "NearestNeighbors") -> None:
-        """A callback to refresh the ``__fitted__`` attributes when the 'methods_require_fit' attribute is updated."""
-        if not obj.is_fitted:  # if the object is already fitted there is no need to wrap any methods
-            cls._wrap_check_method(obj)
-
-    def _wrap_fit_method(cls, obj: "NearestNeighbors") -> None:
-        """Wrap the ``fit`` method to ensure it sets ``is_fitted`` to ``True``, which unwraps the query method checks.
-
-        This feels a bit like magic, but the alternatives would be to:
-        1. Add a decorator to every ``fit`` method that sets ``is_fitted`` to ``True``.
-        2. Set ``is_fitted`` on every ``fit``-like method and check for ``is_fitted`` everywhere.
-        """
-        fit = obj.fit
-
-        @wraps(fit)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            result = fit(*args, **kwargs)
-            logger.debug("Called wrapped fit method with successful fit result, setting '__fitted__'.")
-            obj.is_fitted = True
-            return result
-
-        # we set a ``__fit__`` attribute to denote that the method has been decorated
-        wrapper.__fit__ = True  # type: ignore[reportGeneralTypeIssues]
-        obj.fit = wrapper  # override the default fit with the wrapped fit
-
-    def _wrap_check_method(cls, obj: "NearestNeighbors") -> None:
-        """Wrap or unwrap methods according to ``methods_require_fit``.
-
-        For each wrapped method, we ensure that ``__fitted__`` is True, before the method can be called.
-        Methods not in ``methods_require_fit`` are unwrapped.
-        """
-        logger.debug("Starting to wrap methods to enable fit checking.")
-        available_attributes = dir(obj)
-        methods_to_wrap = obj._config_.methods_require_fit
-        for attribute_name in available_attributes:
-            attribute = getattr(obj, attribute_name)
-            has_check = hasattr(attribute, "__check__")
-            if attribute_name in methods_to_wrap:
-                if has_check:
-                    continue
-                # check if the ``method`` attribute is a bound method
-                if isinstance(attribute, types.MethodType):
-                    logger.debug("Wrapping attribute '%s'.", attribute_name)
-                    # update the method with the wrapped ``__fitted__`` check
-                    setattr(obj, attribute_name, wraps(attribute)(_create_check_wrapper(obj, attribute)))
-                else:
-                    msg = (
-                        f"Attempting to enable '__fitted__' check for invalid attribute '{attribute_name}', because "
-                        f"'{attribute_name}' is not a bound method, instead it's an attribute of '{type(attribute)}'."
-                    )
-                    warn(msg, stacklevel=1)
-            elif has_check:  # if an attribute has a ``__check__`` attribute, but is not in the set to check, we unwrap.
-                logger.debug(
-                    "Attribute '%s' is not in '%s', unwrapping the attribute.",
-                    attribute_name,
-                    methods_to_wrap,
-                )
-                setattr(obj, attribute_name, attribute.__wrapped__)
-
-        for attribute_name in methods_to_wrap:
-            if attribute_name not in available_attributes:
-                msg = (
-                    f"Attempting to enable '__fitted__' check for missing attribute '{attribute_name}', because "
-                    f"'{attribute_name}' does not exist on class {obj}."
-                )
-                warn(msg, stacklevel=1)
-
-    def _unwrap_check_method(cls, obj: "NearestNeighbors") -> None:
-        """Unwrap all existing methods in ``methods_require_fit`` to disable the ``__fitted__`` check.
-
-        This is just a performance optimization, it retrieves the original method and removes the implicitly
-        generated function wrapper (decorator). It should be safe to unwrap the methods if ``__fitted__``
-        is set in ``fit``, but unsafe when ``__fitted__`` is manually set to ``False`` after ``fit``.
-        """
-        logger.debug("Starting to unwrap all fit checking methods.")
-        for method_name in obj._config_.methods_require_fit:
-            # we set an __requires_fit__ attribute on the wrapper, because using ``__wrapped__`` alone is not
-            # safe (methods also use ``__wrapped__`` starting with Python 3.10)
-            if hasattr(obj, method_name) and hasattr(method := getattr(obj, method_name), "__check__"):
-                logger.debug("Unwrapping method '%s'.", method_name)
-                setattr(obj, method_name, method.__wrapped__)
 
 
 class NearestNeighbors(metaclass=NearestNeighborsMeta):
@@ -327,17 +249,24 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
         parameter_types, parameter_values = state["_parameters_"]
         state["_parameters_"] = make_dataclass("Parameters", parameter_types)(**parameter_values)
         self.__dict__.update(state)
-        NearestNeighbors._wrap_fit_method(self)  # re-wrap the fit method
+        _wrap_fit_method(self)  # re-wrap the fit method
         self.is_fitted = self.__fitted__  # wrap or unwrap the check methods depending on ``__fitted__``
 
     def __getstate__(self) -> dict[str, Any]:
-        self.fit = (  # unwrap the fit method if wrapped
+        state = self.__dict__.copy()
+
+        # it is very important to modify the save state and not modify the methods, otherwise the
+        # methods would be modified in-place and the object would be invalid after ``__getstate__``.
+        for method in self.config.methods_require_fit:
+            if method in state:
+                state[method] = m.__wrapped__ if hasattr(m := state[method], "__check__") else m
+
+        state["fit"] = (  # unwrap the fit method if wrapped
             self.fit.__wrapped__  # type: ignore[reportFunctionMemberAccess]
             if hasattr(self.fit, "__fit__")
             else self.fit
         )
-        NearestNeighbors._unwrap_check_method(self)
-        state = self.__dict__.copy()
+
         parameter_fields = fields(self._parameters_)
         parameter_types = [(f.name, f.type) for f in parameter_fields]
         parameter_values = {f.name: getattr(self._parameters_, f.name) for f in parameter_fields}
@@ -352,10 +281,9 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
     @typecheck
     def is_fitted(self, value: bool) -> None:
         if value:
-            NearestNeighbors._unwrap_check_method(self)
-
-        if not value:
-            NearestNeighbors._wrap_check_method(self)
+            _unwrap_check_method(self)
+        else:
+            _wrap_check_method(self)
 
         # this variable is initialized in the metaclass
         self.__fitted__ = value
@@ -395,3 +323,95 @@ def _create_check_wrapper(obj: NearestNeighbors, method: Callable[..., Any]) -> 
     # we set a ``__check__`` attribute, to be able to (easily) distinguish the wrapper from the bound method
     wrapper.__check__ = True  # type: ignore[reportFunctionMemberAccess]
     return wrapper
+
+
+def _wrap_fit_method(obj: "NearestNeighbors") -> None:
+    """Wrap the ``fit`` method to ensure it sets ``is_fitted`` to ``True``, which unwraps the query method checks.
+
+    This feels a bit like magic, but the alternatives would be to:
+    1. Add a decorator to every ``fit`` method that sets ``is_fitted`` to ``True``.
+    2. Set ``is_fitted`` on every ``fit``-like method and check for ``is_fitted`` everywhere.
+    """
+    logger.debug("Wrapping fit method.")
+    original_fit = obj.fit
+
+    @wraps(original_fit)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        result = original_fit(*args, **kwargs)
+        logger.debug("Called wrapped fit method with successful fit result, setting '__fitted__'.")
+        obj.is_fitted = True
+        return result
+
+    # we set a ``__fit__`` attribute to denote that the method has been decorated
+    wrapper.__fit__ = True  # type: ignore[reportGeneralTypeIssues]
+    obj.fit = wrapper  # override the default fit with the wrapped fit
+
+
+def _wrap_check_method(obj: "NearestNeighbors") -> None:
+    """Wrap or unwrap methods according to ``methods_require_fit``.
+
+    For each wrapped method, we ensure that ``__fitted__`` is True, before the method can be called.
+    Methods not in ``methods_require_fit`` are unwrapped.
+    """
+    logger.debug("Starting to wrap methods to enable fit checking.")
+    available_attributes = dir(obj)
+    methods_to_wrap = obj._config_.methods_require_fit
+    for attribute_name in available_attributes:
+        attribute = getattr(obj, attribute_name)
+        has_check = hasattr(attribute, "__check__")
+        if attribute_name in methods_to_wrap:
+            if has_check:
+                continue
+            # check if the ``method`` attribute is a bound method
+            if isinstance(attribute, types.MethodType):
+                logger.debug("Wrapping method '%s'.", attribute_name)
+                # update the method with the wrapped ``__fitted__`` check
+                setattr(obj, attribute_name, wraps(attribute)(_create_check_wrapper(obj, attribute)))
+            else:
+                msg = (
+                    f"Attempting to enable '__fitted__' check for invalid attribute '{attribute_name}', because "
+                    f"'{attribute_name}' is not a bound method, instead it's an attribute of '{type(attribute)}'."
+                )
+                warn(msg, stacklevel=1)
+        elif has_check:  # if an attribute has a ``__check__`` attribute, but is not in the set to check, we unwrap.
+            logger.debug(
+                "Attribute '%s' is not in '%s', unwrapping the attribute.",
+                attribute_name,
+                methods_to_wrap,
+            )
+            setattr(obj, attribute_name, attribute.__wrapped__)
+
+    for attribute_name in methods_to_wrap:
+        if attribute_name not in available_attributes:
+            msg = (
+                f"Attempting to enable '__fitted__' check for missing attribute '{attribute_name}', because "
+                f"'{attribute_name}' does not exist on class {obj}."
+            )
+            warn(msg, stacklevel=1)
+
+
+def _unwrap_check_method(obj: "NearestNeighbors") -> None:
+    """Unwrap all existing methods in ``methods_require_fit`` to disable the ``__fitted__`` check.
+
+    This is just a performance optimization, it retrieves the original method and removes the implicitly
+    generated function wrapper (decorator). It should be safe to unwrap the methods if ``__fitted__``
+    is set in ``fit``, but unsafe when ``__fitted__`` is manually set to ``False`` after ``fit``.
+    """
+    logger.debug("Starting to unwrap all fit checking methods.")
+    for method_name in obj._config_.methods_require_fit:
+        # we set an __requires_fit__ attribute on the wrapper, because using ``__wrapped__`` alone is not
+        # safe (methods also use ``__wrapped__`` starting with Python 3.10)
+        if hasattr(obj, method_name) and hasattr(method := getattr(obj, method_name), "__check__"):
+            logger.debug("Unwrapping method '%s'.", method_name)
+            setattr(obj, method_name, method.__wrapped__)
+
+
+def _check_callback(_: Any, *, obj: "NearestNeighbors") -> None:
+    """A callback to refresh the ``__fitted__`` attributes when the 'methods_require_fit' attribute is updated.
+
+    :param _: The set attribute value (ignored).
+    :param obj: The object, where the attribute is set.
+    :return: None.
+    """
+    if not obj.is_fitted:  # if the object is already fitted there is no need to wrap any methods
+        _wrap_check_method(obj)

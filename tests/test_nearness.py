@@ -259,7 +259,8 @@ def test_query_batch_idx_dist(data_and_neighbors, candidate):
 @pytest.mark.parametrize("candidate", candidates)
 def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
     key = request.node.callspec.id
-    save_path = tmp_path / uuid4().hex
+    fitted_path = tmp_path / uuid4().hex
+    unfitted_path = tmp_path / uuid4().hex
 
     if key == "hnsw-brute":
         pytest.skip(
@@ -267,16 +268,43 @@ def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
             "https://github.com/nmslib/hnswlib/issues/605 for more information."
         )
 
+    unfit_saved_model = SklearnNeighbors()
+    unfit_saved_model.save(unfitted_path)
+    unfit_loaded_model = NearestNeighbors.load(unfitted_path)
+
     data, n_neighbors = data_and_neighbors
     saved_model = candidate.implementation.fit(data.fit)
-    saved_model.save(save_path)
-    loaded_model = candidate.implementation.load(save_path)
+    saved_model.save(fitted_path)
+    loaded_model = NearestNeighbors.load(fitted_path)
 
     idx_save, dist_save = saved_model.query_batch(data.batch, n_neighbors=n_neighbors)
     idx_load, dist_load = loaded_model.query_batch(data.batch, n_neighbors=n_neighbors)
 
+    # make sure the unfitted models are not fitted
+    assert not unfit_saved_model.is_fitted
+    assert not unfit_loaded_model.is_fitted
+
+    # make sure the fitted models are fitted
+    assert saved_model.is_fitted
+    assert loaded_model.is_fitted
+
+    # make sure that the saved and loaded results are similar
     assert array_equal(idx_save, idx_load)
     assert approx_equal(dist_save, dist_load)
+
+    # ensure that fit wrapping is applied after saving and loading
+    assert hasattr(unfit_saved_model.fit, "__fit__")
+    assert hasattr(unfit_loaded_model.fit, "__fit__")
+    assert hasattr(saved_model.fit, "__fit__")
+    assert hasattr(loaded_model.fit, "__fit__")
+
+    # make sure that no checks are applied after saving and loading
+    # note that the config is equal for all tested models
+    for method in saved_model.config.methods_require_fit:
+        assert hasattr(getattr(unfit_saved_model, method), "__check__")
+        assert hasattr(getattr(unfit_loaded_model, method), "__check__")
+        assert not hasattr(getattr(saved_model, method), "__check__")
+        assert not hasattr(getattr(loaded_model, method), "__check__")
 
 
 @skip_if_missing("annoy")
