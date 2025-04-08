@@ -188,7 +188,7 @@ class ScannNeighbors(NearestNeighbors):
             final_num_neighbors=n_neighbors,
             **self.parameters.search_config,
         )
-        return idx, dist  # type: ignore[reportReturnType]
+        return idx, dist
 
     def query_batch(
         self,

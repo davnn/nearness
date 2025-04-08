@@ -3,7 +3,7 @@
 
 
 import torch
-from safecheck import AbstractDtype, Int64, NumpyArray, TorchArray, typecheck, is_instance
+from safecheck import AbstractDtype, Int64, NumpyArray, TorchArray, is_instance, typecheck
 from typing_extensions import Literal, overload
 
 from ._base import NearestNeighbors

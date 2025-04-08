@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-from safecheck import Float, Float32, Int32, JaxArray, NumpyArray, typecheck, is_instance
+from safecheck import Float, Float32, Int32, JaxArray, NumpyArray, is_instance, typecheck
 from typing_extensions import Literal, overload
 
 from ._base import NearestNeighbors
@@ -110,7 +110,7 @@ class JaxNeighbors(NearestNeighbors):
 
     def query_batch(self, points, n_neighbors):  # type: ignore[reportGeneralTypeIssues]
         # the data is implicitly casted to a jax array
-        is_numpy = is_instance(points, NumpyArray)  # type: ignore[reportUnnecessaryIsInstance,reportGeneralTypeIssues]
+        is_numpy = is_instance(points, NumpyArray)
         if self.parameters.p == 2 and self.parameters.compute_mode == "use_mm_for_euclid_dist":
             distance = cdist_euclidean_mm(self._data, points)  # type: ignore[reportGeneralTypeIssues]
         else:
