@@ -60,7 +60,7 @@ tasks:
 
     test:
         cmds:
-            - poetry run pytest -rsx -c pyproject.toml --cov-report=html --cov=src/{{.PROJECT}} {{.TESTS}}/
+            - poetry run pytest -rsx -c pyproject.toml --cov-report=html --cov=src/{{.PROJECT}} {{.TESTS}}
             - poetry run coverage-badge -o assets/coverage.svg -f
 
     typing:

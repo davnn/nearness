@@ -1,4 +1,3 @@
-from copy import deepcopy
 from uuid import uuid4
 import threading
 from dataclasses import dataclass
@@ -262,9 +261,6 @@ def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
     key = request.node.callspec.id
     fitted_path = tmp_path / uuid4().hex
     unfitted_path = tmp_path / uuid4().hex
-    unfit_saved_model = deepcopy(candidate.implementation)
-    unfit_saved_model.save(unfitted_path)
-    unfit_loaded_model = NearestNeighbors.load(unfitted_path)
 
     if key == "hnsw-brute":
         pytest.skip(
@@ -272,9 +268,12 @@ def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
             "https://github.com/nmslib/hnswlib/issues/605 for more information."
         )
 
+    unfit_saved_model = SklearnNeighbors()
+    unfit_saved_model.save(unfitted_path)
+    unfit_loaded_model = NearestNeighbors.load(unfitted_path)
+
     data, n_neighbors = data_and_neighbors
-    saved_model = deepcopy(candidate.implementation)
-    saved_model.fit(data.fit)
+    saved_model = candidate.implementation.fit(data.fit)
     saved_model.save(fitted_path)
     loaded_model = NearestNeighbors.load(fitted_path)
 
