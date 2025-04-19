@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 from annoy import AnnoyIndex
 from safecheck import Float, Int64, NumpyArray, Real, typecheck
-from typing_extensions import Any, Iterable, Literal, overload
+from typing_extensions import Any, Literal
 
 from ._base import NearestNeighbors
 from ._base._helpers import load_index_from_temp_file, save_index_to_temp_file
@@ -57,13 +57,8 @@ class AnnoyNeighbors(NearestNeighbors):
             self._index = index
             self.__fitted__ = True
 
-    @overload
-    def fit(self, data: Iterable[Real[NumpyArray, "d"]]) -> "AnnoyNeighbors": ...
-
-    @overload
-    def fit(self, data: Real[NumpyArray, "n d"]) -> "AnnoyNeighbors": ...
-
-    def fit(self, data):  # type: ignore[reportGeneralTypeIssues]
+    @typecheck
+    def fit(self, data: Real[NumpyArray, "n d"]) -> "AnnoyNeighbors":
         n_samples, n_dim = data.shape
         self.parameters.load_index_dim = n_dim
         index = AnnoyIndex(n_dim, metric=self.parameters.metric)

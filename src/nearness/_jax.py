@@ -75,6 +75,12 @@ class JaxNeighbors(NearestNeighbors):
         self._data = jnp.asarray(data)
         return self
 
+    @typecheck
+    def add(self, data: Float[NumpyArray | JaxArray, "n d"]) -> "JaxNeighbors":
+        data = jnp.asarray(data, dtype=self._data.dtype, device=self._data.device)
+        self._data = jnp.concatenate([self._data, data], axis=0)  # type: ignore
+        return self
+
     @overload
     def query(
         self,

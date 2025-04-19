@@ -83,6 +83,12 @@ class NumpyNeighbors(NearestNeighbors):
         self._data = data
         return self
 
+    @typecheck
+    def add(self, data: Float[NumpyArray, "n d"]) -> "NumpyNeighbors":
+        data = np.asarray(data, like=self._data)
+        self._data = np.concatenate([self._data, data], axis=0)  # type: ignore
+        return self
+
     def query(
         self,
         point: Float[NumpyArray, "d"],

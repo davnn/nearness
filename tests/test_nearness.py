@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import faiss
 from faiss.contrib.datasets import SyntheticDataset
-from typing_extensions import Self, Literal
+from typing_extensions import Literal
 
 from numpy.typing import DTypeLike
 import hypothesis
@@ -255,6 +255,27 @@ def test_query_batch_idx_dist(data_and_neighbors, candidate):
 
 
 @hypothesis.given(data_and_neighbors=neighbors_strategy())
+@pytest.mark.parametrize("candidate", candidates)
+def test_add_data(data_and_neighbors, candidate, request):
+    """Adding the query points to the index reduces the distance to those points."""
+    key = request.node.callspec.id
+    if key == "hnsw-brute":
+        pytest.skip(
+            "Adding data to HSNW index with use_bruteforce=True is not possible, have a look at "
+            "https://github.com/nmslib/hnswlib/issues/624 for more information."
+        )
+
+    if candidate.implementation.has_add:
+        data, n_neighbors = data_and_neighbors
+        candidate.reference.fit(data.fit)
+        candidate.implementation.fit(data.fit)
+        candidate.implementation.add(data.batch)
+        _, dist = candidate.implementation.query_batch(data.batch, n_neighbors=len(data.fit))
+        _, dist_ref = candidate.reference.query_batch(data.batch, n_neighbors=len(data.fit))
+        assert dist.sum() < dist_ref.sum()
+
+
+@hypothesis.given(data_and_neighbors=neighbors_strategy())
 @hypothesis.settings(suppress_health_check=[hypothesis.HealthCheck.function_scoped_fixture])
 @pytest.mark.parametrize("candidate", candidates)
 def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
@@ -268,7 +289,7 @@ def test_save_load_identity(data_and_neighbors, candidate, tmp_path, request):
             "https://github.com/nmslib/hnswlib/issues/605 for more information."
         )
 
-    unfit_saved_model = SklearnNeighbors()
+    unfit_saved_model = candidate.implementation.__class__()
     unfit_saved_model.save(unfitted_path)
     unfit_loaded_model = NearestNeighbors.load(unfitted_path)
 
@@ -472,7 +493,7 @@ def test_thread_safety():
         def __init__(self, *, thread_id: int):
             super().__init__()
 
-        def fit(self, data: np.ndarray) -> Self: ...
+        def fit(self, data: np.ndarray) -> "Model": ...
 
         def query(self, point: np.ndarray, n_neighbors: int) -> tuple[np.ndarray, np.ndarray]: ...
 

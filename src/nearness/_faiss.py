@@ -46,12 +46,10 @@ class FaissNeighbors(NearestNeighbors):
         self,
         *,
         index: str | FaissIndex | faiss.Index = "Flat",
-        add_data_on_fit: bool = True,
     ) -> None:
         """Instantiate faiss nearest neighbors.
 
         :param index: An index factory string, a FaissIndex wrapped index or a faiss.Index.
-        :param add_data_on_fit: Add the data used for index training to the learned index.
         """
         super().__init__()
         # to be defined in ``fit``
@@ -62,11 +60,7 @@ class FaissNeighbors(NearestNeighbors):
         _, dim = data.shape
         self._index = self._create_index(dim)
         self._index.train(data)  # type: ignore[reportCallIssue]
-
-        if self.parameters.add_data_on_fit:
-            # data might be added directly on fit, or using the ``add`` method
-            self._index.add(data)  # type: ignore[reportCallIssue]
-
+        self._index.add(data)  # type: ignore[reportCallIssue]
         return self
 
     @typecheck

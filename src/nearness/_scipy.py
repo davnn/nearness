@@ -1,3 +1,4 @@
+import numpy as np
 from safecheck import Float, Int64, NumpyArray, typecheck
 from scipy.spatial.distance import cdist
 from typing_extensions import Literal, TypedDict
@@ -63,6 +64,12 @@ class ScipyNeighbors(NearestNeighbors):
     @typecheck
     def fit(self, data: Float[NumpyArray, "n d"]) -> "ScipyNeighbors":
         self._data = data
+        return self
+
+    @typecheck
+    def add(self, data: Float[NumpyArray, "n d"]) -> "ScipyNeighbors":
+        data = np.asarray(data, like=self._data)
+        self._data = np.concatenate([self._data, data], axis=0)  # type: ignore
         return self
 
     def query(
