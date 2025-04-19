@@ -110,6 +110,11 @@ class AutoFaissNeighbors(NearestNeighbors):
         )
         return self
 
+    @typecheck
+    def add(self, data: Float[NumpyArray, "n d"]) -> "AutoFaissNeighbors":
+        self._index.add(data)  # type: ignore[reportCallIssue]
+        return self
+
     def query(
         self,
         point: Float[NumpyArray, "d"],

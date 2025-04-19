@@ -134,7 +134,7 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
         self.__fitted__: bool = False
 
     @abstractmethod
-    def fit(self, data: np.ndarray) -> Self:
+    def fit(self, data: np.ndarray) -> "NearestNeighbors":
         """Learn an index structure based on a matrix of points.
 
         :param data: matrix of ``size x dim``.
@@ -289,7 +289,13 @@ class NearestNeighbors(metaclass=NearestNeighborsMeta):
         self.__fitted__ = value
 
     @property
+    def has_add(self) -> bool:
+        """True if the subclass provides an implementation for ``add``."""
+        return self.__class__.add is not NearestNeighbors.add
+
+    @property
     def config(self) -> "Config":
+        """Instance-specific copy of the global configuration object."""
         return self._config_
 
     @property

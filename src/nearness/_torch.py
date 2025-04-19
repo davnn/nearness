@@ -1,7 +1,6 @@
 # type: ignore[reportGeneralTypeIssues,reportIncompatibleMethodOverride]
 # It appears to be impossible to correctly type the overrides without bloat.
-
-
+import numpy as np
 import torch
 from safecheck import AbstractDtype, Int64, NumpyArray, TorchArray, is_instance, typecheck
 from typing_extensions import Literal, overload
@@ -11,6 +10,12 @@ from ._base import NearestNeighbors
 
 class SupportedFloat(AbstractDtype):
     dtypes = ["float32", "float64"]  # noqa: RUF012
+
+
+NumpyTorchDtypeMap = {
+    np.dtype("float32"): torch.float32,
+    np.dtype("float64"): torch.float64,
+}
 
 
 class TorchNeighbors(NearestNeighbors):
@@ -42,12 +47,23 @@ class TorchNeighbors(NearestNeighbors):
         :param force_device: Ensure a specific device is used for search.
         """
         super().__init__()
+        # ensure that add can only be used after fit
+        self.config.methods_require_fit = frozenset({"add", *self.config.methods_require_fit})
         # to be defined in ``fit``
         self._data: SupportedFloat[TorchArray, "n d"] | None = None
 
     @typecheck
     def fit(self, data: SupportedFloat[NumpyArray | TorchArray, "n d"]) -> "TorchNeighbors":
         self._data = torch.as_tensor(data, device=self.parameters.force_device, dtype=self.parameters.force_dtype)
+        return self
+
+    @typecheck
+    def add(self, data: SupportedFloat[NumpyArray | TorchArray, "n d"]) -> "TorchNeighbors":
+        device = getattr(data, "device", None) if self.parameters.force_device is None else self.parameters.force_device
+        data_dtype = NumpyTorchDtypeMap[data.dtype] if isinstance(data, np.ndarray) else data.dtype
+        dtype = data_dtype if self.parameters.force_dtype is None else self.parameters.force_dtype
+        data = torch.as_tensor(data, device=device, dtype=dtype)
+        self._data = torch.cat([self._data, data], dim=0)
         return self
 
     @overload

@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "nearness"
-version = "0.2.2"
+version = "0.2.3"
 description = "An easy-to-use interface for (approximate) nearest neighbors algorithms."
 readme = "README.md"
 authors = ["David Muhr <muhrdavid+github@gmail.com>"]
@@ -124,6 +124,7 @@ lint.ignore = [
     "E731", # no lambdas
     "B905", # zip without strict arguments
     "ANN401", # no typed Any
+    "PGH003", # use specific rules for type ignore
 ]
 
 [tool.ruff.lint.isort]

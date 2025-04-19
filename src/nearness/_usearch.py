@@ -45,7 +45,6 @@ class UsearchNeighbors(NearestNeighbors):
         save_index_path: str | Path | None = None,
         load_index_path: str | Path | None = None,
         map_file_index: bool = False,
-        add_data_on_fit: bool = True,
     ) -> None:
         """Instantiate Usearch nearest neighbors.
 
@@ -63,7 +62,6 @@ class UsearchNeighbors(NearestNeighbors):
         :param save_index_path: Save the index after index creation.
         :param load_index_path: Load an existing index directly on ``__init__``.
         :param map_file_index: Memory map an index after creation or on load.
-        :param add_data_on_fit: Add data to the index directly on index creation.
         """
         super().__init__()
         # to be defined in ``fit``
@@ -90,10 +88,7 @@ class UsearchNeighbors(NearestNeighbors):
     def fit(self, data: Float[NumpyArray, "n d"]) -> "UsearchNeighbors":
         _, dim = data.shape
         self._index = self._create_index(dim)
-
-        if self.parameters.add_data_on_fit:
-            # data might be added directly on fit, or using the ``add`` method
-            self.add(data)
+        self.add(data)
 
         if (path := self.parameters.save_index_path) is not None:
             self._index.save(

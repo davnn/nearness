@@ -34,7 +34,7 @@ class HNSWNeighbors(NearestNeighbors):
         """
         super().__init__()
         self._index_constructor = BFIndex if use_bruteforce else Index
-        self._model = None
+        self._index: Index | None = None
 
     @typecheck
     def fit(self, data: Float[NumpyArray, "n d"]) -> "HNSWNeighbors":
@@ -56,7 +56,17 @@ class HNSWNeighbors(NearestNeighbors):
         if (n_search := self.parameters.n_search_neighbors) is not None:
             index.set_ef(n_search)
 
-        self._model = index
+        self._index = index
+        return self
+
+    @typecheck
+    def add(self, data: Float[NumpyArray, "n d"]) -> "HNSWNeighbors":
+        if isinstance(self._index, BFIndex):
+            msg = "Add is not implemented for brute-force indices in HNSWLIB."
+            raise NotImplementedError(msg)
+
+        self._index.resize_index(self._index.max_elements + len(data))
+        self._index.add_items(data)
         return self
 
     def query(
@@ -72,5 +82,5 @@ class HNSWNeighbors(NearestNeighbors):
         points: Float[NumpyArray, "m d"],
         n_neighbors: int,
     ) -> tuple[UInt64[NumpyArray, "m {n_neighbors}"], Float32[NumpyArray, "m {n_neighbors}"]]:
-        idx, dist = self._model.knn_query(points, k=n_neighbors, num_threads=self.parameters.n_threads)
+        idx, dist = self._index.knn_query(points, k=n_neighbors, num_threads=self.parameters.n_threads)
         return idx, dist
