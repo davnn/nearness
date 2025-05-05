@@ -67,8 +67,12 @@ jobs:
                     git config --global user.name "github-actions[bot]"
                     git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+                    # Fetch and check out the pull request branch
                     git fetch origin ${{ github.head_ref }}
                     git checkout ${{ github.head_ref }}
+
+                    # Ensure we're up to date with the remote (without merge commits)
+                    git pull --ff-only origin ${{ github.head_ref }}
 
                     # Stage and commit changes
                     git add .
