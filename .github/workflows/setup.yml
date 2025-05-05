@@ -64,10 +64,17 @@ jobs:
             -   name: Push
                 if: ${{ inputs.push && inputs.os == 'ubuntu-latest' && github.event_name == 'pull_request' }}
                 run: |
-                  git config --global user.name "github-actions[bot]"
-                  git config --global user.email "github-actions[bot]@users.noreply.github.com"
-                  git fetch origin
-                  git rebase origin/${{ github.head_ref }} || git rebase --abort
-                  git add .
-                  git commit -m ":white_check_mark: automated change [skip ci]" || echo "No changes to commit"
-                  git push origin HEAD:${{ github.head_ref }}
+                    git config --global user.name "github-actions[bot]"
+                    git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+                    git fetch origin ${{ github.head_ref }}
+                    git checkout ${{ github.head_ref }}
+
+                    # Stage and commit changes
+                    git add .
+                    if git diff --cached --quiet; then
+                        echo "No changes to commit"
+                    else
+                        git commit -m ":white_check_mark: automated change [skip ci]" || echo "No changes to commit"
+                        git push origin HEAD:${{ github.head_ref }}
+                    fi
