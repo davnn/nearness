@@ -13,7 +13,7 @@ import joblib
 import numpy as np
 from joblib import Parallel, delayed
 from safecheck import typecheck
-from typing_extensions import Any, Callable, Self
+from typing_extensions import Any, Callable, Never, Self
 
 from ._config import Config, config
 from ._experimental import experimental
@@ -23,10 +23,14 @@ logger = getLogger(__name__)
 __all__ = [
     "InvalidSignatureError",
     "NearestNeighbors",
+    "PositionalArgumentError",
 ]
 
 
 class InvalidSignatureError(ValueError): ...
+
+
+class PositionalArgumentError(TypeError): ...
 
 
 class NearestNeighborsMeta(ABCMeta):
@@ -59,13 +63,20 @@ class NearestNeighborsMeta(ABCMeta):
 
         return super().__new__(cls, name, bases, attrs)
 
-    def __call__(cls, *_: Any, **kwargs: Any) -> "NearestNeighbors":
+    def __call__(cls, *args: Never, **kwargs: Any) -> "NearestNeighbors":
         """Dynamically set the ``_parameters_`` attribute and wrap the fit method and query methods.
 
-        :param _: We ensure that there are only keyword-only arguments in ``__new__``.
+        :param args: We ensure that there are only keyword-only arguments in ``__new__``.
         :param kwargs: The mapping of parameters of the algorithm.
         :return: The modified object.
         """
+        if len(args) > 0:
+            msg = (
+                f"{cls} does not support positional arguments, but found '{args}', make sure "
+                f"to supply all arguments as keyword arguments."
+            )
+            raise PositionalArgumentError(msg)
+
         # filter the self parameter
         parameters = {k: v for k, v in inspect.signature(cls.__init__).parameters.items() if k != "self"}
 
