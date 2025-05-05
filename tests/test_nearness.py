@@ -1,22 +1,21 @@
-from uuid import uuid4
 import threading
 from dataclasses import dataclass
+from uuid import uuid4
 
 import faiss
-from faiss.contrib.datasets import SyntheticDataset
-from typing_extensions import Literal
-
-from numpy.typing import DTypeLike
 import hypothesis
 import hypothesis.strategies as st
-from sklearn.decomposition import PCA
-from sklearn.model_selection import train_test_split
-from sklearn.manifold import MDS
-from sklearn.datasets import load_digits
-
 import nearness
+from faiss.contrib.datasets import SyntheticDataset
 from nearness import *
-from nearness._base import InvalidSignatureError
+from nearness._base import InvalidSignatureError, PositionalArgumentError
+from numpy.typing import DTypeLike
+from sklearn.datasets import load_digits
+from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
+from sklearn.model_selection import train_test_split
+from typing_extensions import Literal
+
 from .utilities import *
 
 hypothesis.settings.register_profile("no-deadline", deadline=None)
@@ -537,14 +536,6 @@ def test_missing_abstract_method():
         N()
 
 
-def test_keyword_only():
-    with pytest.raises(InvalidSignatureError):
-
-        class N(NearestNeighbors):
-            def __init__(self, a):
-                super().__init__()
-
-
 def test_warn_check():
     class ModelNoConfig(NearestNeighbors):
         no_method = True
@@ -621,6 +612,21 @@ def test_check_attribute():
     # now after ``fit``, the check should be removed from all methods
     for method in model.config.methods_require_fit:
         assert not hasattr(getattr(model, method), "__check__")
+
+
+def test_positional_signature_raises():
+    with pytest.raises(InvalidSignatureError):
+
+        class Model(NearestNeighbors):
+            def __init__(self, a: int) -> None: ...
+
+
+def test_positional_argument_raises():
+    class Model(NearestNeighbors):
+        def __init__(self, *, a=1): ...
+
+    with pytest.raises(PositionalArgumentError):
+        Model(1)
 
 
 def test_retrieve_version():
