@@ -12,73 +12,31 @@ on:
             command:
                 required: true
                 type: string
-            push:
-                required: false
-                type: boolean
 
 env:
-    POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+    UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
 
 jobs:
     setup:
         runs-on: ${{ inputs.os }}
         steps:
-            -   uses: actions/checkout@v4
-                with:
-                  fetch-depth: 0  # Ensures the full history is available for pull
+            - uses: actions/checkout@v4
 
-            -   name: Install Task
-                uses: arduino/setup-task@v1
-                with:
-                    version: 3.x
-                    repo-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Install Task
+              uses: arduino/setup-task@v1
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-            -   name: Install poetry
-                run: curl -sSL https://install.python-poetry.org | python3 -
+            - name: Install UV
+              uses: astral-sh/setup-uv@v6
+              with:
+                  enable-cache: true
+                  python-version: ${{ inputs.python }}
 
-            -   name: Set up poetry path (windows)
-                if: inputs.os == 'windows-latest'
-                run: echo "C:\Users\runneradmin\AppData\Roaming\Python\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            - name: Install dependencies with uv
+              run: task uv-sync
 
-            -   name: Set up poetry path (macos)
-                if: inputs.os == 'macos-latest'
-                run: echo "/Users/runner/.local/bin" >> $GITHUB_PATH
-
-            -   name: Set up poetry path (linux)
-                if: inputs.os == 'ubuntu-latest'
-                run: echo "/home/runner/.local/bin" >> $GITHUB_PATH
-
-            -   name: Set up Python ${{ inputs.python }}
-                uses: actions/setup-python@v5
-                with:
-                    python-version: ${{ inputs.python }}
-                    cache: "poetry"
-
-            -   name: Run install
-                run: task poetry-install
-
-            -   name: Command
-                run: ${{ inputs.command }}
-                shell: bash
-
-            -   name: Push
-                if: ${{ inputs.push && inputs.os == 'ubuntu-latest' && github.event_name == 'pull_request' }}
-                run: |
-                    git config --global user.name "github-actions[bot]"
-                    git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-                    # Fetch and check out the pull request branch
-                    git fetch origin ${{ github.head_ref }}
-                    git checkout ${{ github.head_ref }}
-
-                    # Ensure we're up to date with the remote (without merge commits)
-                    git pull --ff-only origin ${{ github.head_ref }}
-
-                    # Stage and commit changes
-                    git add .
-                    if git diff --cached --quiet; then
-                        echo "No changes to commit"
-                    else
-                        git commit -m ":white_check_mark: automated change [skip ci]" || echo "No changes to commit"
-                        git push origin HEAD:${{ github.head_ref }}
-                    fi
+            - name: Command
+              run: ${{ inputs.command }}
+              shell: bash

@@ -1,91 +1,60 @@
 version: "3"
 
-env:
-    CONDA: micromamba
-
 vars:
     PROJECT: nearness
     TESTS: tests
 
 tasks:
-    env-create:
-        cmd: $CONDA env create -n {{.PROJECT}} --file env.yml --yes
+    uv-sync:
+        cmd: uv sync --all-extras
 
-    env-remove:
-        cmd: $CONDA env remove -n {{.PROJECT}} --yes
-
-    poetry-setup:
-        cmds:
-            - curl -sSL https://install.python-poetry.org | python -
-            - poetry config virtualenvs.create false
-
-    poetry-remove:
-        cmd: curl -sSL https://install.python-poetry.org | python - --uninstall
-
-    poetry-install:
-        cmd: poetry install --all-extras --with dev --no-interaction
-
-    poetry-upgrade:
-        cmds:
-            -   task: poetry-upgrade-dev
-            -   task: poetry-update
-
-    poetry-update:
-        cmd: poetry update --with dev
-
-    poetry-upgrade-dev:
-        cmd: poetry add notebook@latest pytest@latest pytest-html@latest hypothesis@latest coverage@latest pytest-cov@latest pytest-benchmark@latest coverage-badge@latest ruff@latest pre-commit@latest black@latest pyright@latest bandit@latest safety@latest -G dev
-
-    poetry-use:
-        cmds:
-            - |
-                $CONDA activate {{.PROJECT}}
-                poetry env use system
+    uv-upgrade-dev:
+        cmd: |
+            uv add --dev notebook pytest pytest-html hypothesis coverage pytest-cov pytest-benchmark genbadge ruff pre-commit black pyright bandit
 
     pre-commit-install:
-        cmd: poetry run pre-commit install
+        cmd: uv run pre-commit install
 
     pre-commit-all:
-        cmd: poetry run pre-commit run --all-files
+        cmd: uv run pre-commit run --all-files
 
     lint:
         cmds:
-            - poetry run ruff check src/{{.PROJECT}}
-            - poetry run black --diff --check --config pyproject.toml src/{{.PROJECT}} {{.TESTS}}
+            - uv run ruff check src/{{.PROJECT}}
+            - uv run black --diff --check --config pyproject.toml src/{{.PROJECT}} {{.TESTS}}
 
     format:
         cmds:
-            - poetry run ruff check src/{{.PROJECT}} --fix
-            - poetry run black --config pyproject.toml src/{{.PROJECT}} {{.TESTS}}
+            - uv run ruff check src/{{.PROJECT}} --fix
+            - uv run black --config pyproject.toml src/{{.PROJECT}} {{.TESTS}}
 
     test:
         cmds:
-            - poetry run pytest -rsx -c pyproject.toml --cov-report=html --cov=src/{{.PROJECT}} {{.TESTS}}
-            - poetry run coverage-badge -o assets/coverage.svg -f
+            - uv run pytest -rsx -c pyproject.toml --cov=src/{{.PROJECT}} {{.TESTS}}
+            - uv run genbadge coverage -i coverage.xml -o assets/coverage.svg
 
     typing:
-        cmd: poetry run pyright
+        cmd: uv run pyright
 
     typing-quality:
-        cmd: poetry run pyright --ignoreexternal --verifytypes nearness
+        cmd: uv run pyright --ignoreexternal --verifytypes nearness
 
     safety:
         cmds:
-            - poetry run safety check --full-report
-            - poetry run bandit -ll --recursive src/{{.PROJECT}} {{.TESTS}}
+            - uv run bandit -ll --recursive src/{{.PROJECT}} {{.TESTS}}
 
     check:
         cmds:
-            -   task: lint
-            -   task: typing
-            -   task: test
-            -   task: safety
+            - task: lint
+            - task: typing
+            - task: test
+            - task: safety
 
     build:
-        cmd: poetry build
+        cmd: uv build
 
     publish:
-        cmd: poetry publish --skip-existing
+        cmd: uv publish --skip-existing
 
     sysinfo:
-        cmd: poetry run python .github/system_info.py
+        cmd: uv run python .github/system_info.py
