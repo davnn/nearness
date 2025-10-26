@@ -1,19 +1,22 @@
-# Poetry pyproject.toml: https://python-poetry.org/docs/pyproject/
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv-build>=0.9.5,<0.10.0"]
+build-backend = "uv_build"
 
-[tool.poetry]
+[tool.uv.build-backend]
+module-name = "nearness"
+module-root = "src"
+
+[project]
 name = "nearness"
-version = "0.2.4"
+version = "0.2.5"
 description = "An easy-to-use interface for (approximate) nearest neighbors algorithms."
 readme = "README.md"
-authors = ["David Muhr <muhrdavid+github@gmail.com>"]
-license = "MIT"
+homepage = "https://github.com/davnn/nearness"
 repository = "https://github.com/davnn/nearness"
-packages = [{ include = "nearness", from = "src" }]
-
-# Pypi classifiers: https://pypi.org/classifiers/
+authors = [{ name = "David Muhr", email = "muhrdavid+github@gmail.com" }]
+license = { text = "MIT" }
+requires-python = ">=3.10,<3.13"
+keywords = ["nearest neighbors", "approximation", "similarity search"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "License :: OSI Approved :: MIT License",
@@ -33,66 +36,51 @@ classifiers = [
     "Operating System :: MacOS",
     "Typing :: Typed"
 ]
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.13"
-safecheck = ">=0.3"
-joblib = "^1"
-typing-extensions = ">=4"
-numpy = { version = ">=1", optional = true }
-scipy = { version = ">=1", optional = true }
-scikit-learn = { version = ">=1", optional = true }
-autofaiss = { version = ">=2.17", optional = true }
-faiss-cpu = { version = "^1", optional = true }
-annoy = { version = "^1", optional = true }
-hnswlib = { version = "^0.8", optional = true }
-usearch = { version = "^2", optional = true }
-# ScaNN should be installed using --no-deps to prevent an installation of tensorflow, but this is not yet supported
-# by poetry, see: https://github.com/python-poetry/poetry/issues/3377
-scann = { version = "^1", optional = true, platform = "linux" }
-jax = { version = ">=0.4", source = "pypi", extras = ["cpu"], optional = true }
-torch = [
-    { version = ">=1", platform = "darwin", source = "pypi", optional = true },
-    { version = ">=1", platform = "win32", source = "pypi", optional = true },
-    { version = ">=1", platform = "linux", source = "torch-cpu", optional = true }
+dependencies = [
+    "safecheck>=0.3",
+    "joblib>=1",
+    "typing-extensions>=4"
 ]
 
-[tool.poetry.extras]
-annoy = ["annoy"]
-numpy = ["numpy"]
-scipy = ["scipy"]
-hnswlib = ["hnswlib"]
-scikit-learn = ["scikit-learn"]
-autofaiss = ["autofaiss", "faiss-cpu"]
-faiss = ["faiss-cpu"]
-torch = ["torch"]
-scann = ["scann"]
-jax = ["jax"]
-usearch = ["usearch"]
+[project.optional-dependencies]
+annoy = ["annoy>=1"]
+numpy = ["numpy>=1"]
+scipy = ["scipy>=1"]
+hnswlib = ["hnswlib>=0.8"]
+scikit-learn = ["scikit-learn>=1"]
+autofaiss = ["autofaiss>=2.17", "faiss-cpu>=1"]
+faiss = ["faiss-cpu>=1"]
+torch = ["torch>=1"]
+scann = ["scann>=1; sys_platform == 'linux'"]
+jax = ["jax[cpu]>=0.4"]
+usearch = ["usearch>=2"]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.5"
-pytest-html = "^4.1.1"
-hypothesis = "^6.130.11"
-coverage = "^7.8.0"
-pytest-cov = "^6.1.1"
-coverage-badge = "^1.1.2"
-ruff = "^0.11.4"
-pre-commit = "^4.2.0"
-black = "^25.1.0"
-pyright = "^1.1.398"
-bandit = "^1.8.3"
-safety = "^3.3.1"
-notebook = "^7.3.3"
-pytest-benchmark = "^5.1.0"
+[dependency-groups]
+dev = [
+    "bandit>=1.8.6",
+    "black>=25.9.0",
+    "coverage>=7.11.0",
+    "genbadge>=1.1.2",
+    "hypothesis>=6.142.4",
+    "notebook>=7.4.7",
+    "pre-commit>=4.3.0",
+    "pyright[nodejs]>=1.1.407",
+    "pytest>=8.4.2",
+    "pytest-benchmark>=5.1.0",
+    "pytest-cov>=7.0.0",
+    "pytest-html>=4.1.1",
+    "ruff>=0.14.2",
+]
 
-[[tool.poetry.source]]
-name = "torch-cpu"
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
-priority = "explicit"
+explicit = true
 
 [tool.black]
-# https://github.com/psf/black
 target-version = ["py310"]
 line-length = 120
 color = true
@@ -102,37 +90,13 @@ target-version = "py310"
 line-length = 120
 lint.select = ["ALL"]
 lint.ignore = [
-    "D203", # one blank line required before class docstring
-    "D213", # multi line summary should start at second line
-    "D401", # docstrings should start with non-imperative mood
-    "E501", # line too long, handled by black
-    "F403", # disallow * import, otherwise allow at module level (F406)
-    "B008", # do not perform function calls in argument defaults
-    "S101", # do not use assert,
-    "PD901", # do not use 'df' as a variable name
-    "PLR0911", # too many return statements
-    "D107", # missing docstring for '__init__'
-    "TCH", # require type checking block
-    "PLR0913", # too many function arguments
-    "F722", # syntax error forward annotations (error on jaxtyping annotation))
-    "UP037", # remove quotes from type annotation (format breaks jaxtyping annotations)
-    "F821", # undefined name (error on jaxtyping annotations)
-    "UP035", # deprecated import (we actually want to import from typing_extensions)
-    "ARG002", # unused method argument (we use the arguments in a meta-class, but ruff doesn't know)
-    "PLR2004", # magic values are sometimes useful
-    "PYI041", # use float instead of int | float, this clashes with typechecking
-    "E731", # no lambdas
-    "B905", # zip without strict arguments
-    "ANN401", # no typed Any
-    "PGH003", # use specific rules for type ignore
+    "D203", "D213", "D401", "E501", "F403", "B008", "S101", "PLR0911", "D107",
+    "TCH", "PLR0913", "F722", "UP037", "F821", "UP035", "ARG002", "PLR2004", "PYI041",
+    "E731", "B905", "ANN401", "PGH003"
 ]
 
 [tool.ruff.lint.isort]
-# Combine multiple `from foo import bar as baz` statements with the same source
-# (`foo`) into a single statement.
 combine-as-imports = true
-# Imports of the form `from foo import bar as baz` show one `import bar as baz`
-# per line. Useful for __init__.py files that just re-export symbols.
 force-wrap-aliases = true
 
 [tool.ruff.lint.flake8-quotes]
@@ -190,11 +154,13 @@ reportUninitializedInstanceVariable = true
 reportMissingImports = false
 
 [tool.pytest.ini_options]
-# https://docs.pytest.org/en/6.2.x/customize.html#pyproject-toml
-# Directories that are not visited by pytest collector:
 norecursedirs = ["hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
-addopts = ["--strict-markers", "--tb=short"]
-filterwarnings = ["ignore::UserWarning", "ignore::DeprecationWarning", "ignore::nearness.ExperimentalWarning"]
+addopts = ["--strict-markers", "--tb=short", "--cov-report=html", "--cov-report=xml"]
+filterwarnings = [
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+    "ignore::nearness.ExperimentalWarning"
+]
 
 [tool.coverage.run]
 branch = true
@@ -206,7 +172,6 @@ exclude_also = [
     "raise AssertionError",
     "raise NotImplementedError",
     "@overload",
-    "if __name__ == .__main__.:",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
     "class .*\\bProtocol\\):",

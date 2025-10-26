@@ -1,2 +1,0 @@
-security:
-    continue-on-vulnerability-error: True # Suppress non-zero exit codes when vulnerabilities are found.
