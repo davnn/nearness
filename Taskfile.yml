@@ -54,7 +54,7 @@ tasks:
         cmd: uv build
 
     publish:
-        cmd: uv publish --skip-existing
+        cmd: uv publish
 
     sysinfo:
         cmd: uv run python .github/system_info.py
